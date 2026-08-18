@@ -5,6 +5,7 @@ from uuid import UUID
 import httpx
 
 from .schemas import (
+    AIProviderRun,
     HumanReviewRequest,
     PersistAssessmentRequest,
     ReplayAssessmentResponse,
@@ -164,3 +165,24 @@ class SupabaseRestRepository:
             },
         )
         return UUID(str(review_id))
+
+    def record_ai_run(
+        self,
+        assessment_run_id: UUID,
+        provider_run: AIProviderRun,
+        structured_output: dict,
+    ) -> UUID:
+        ai_run_id = self._rpc(
+            "record_ai_run_trace",
+            {
+                "p_assessment_run_id": str(assessment_run_id),
+                "p_provider": provider_run.provider,
+                "p_model": provider_run.model,
+                "p_role": provider_run.role,
+                "p_prompt_version": provider_run.prompt_version,
+                "p_input_hash": provider_run.input_hash,
+                "p_structured_output": structured_output,
+                "p_latency_ms": provider_run.latency_ms,
+            },
+        )
+        return UUID(str(ai_run_id))
