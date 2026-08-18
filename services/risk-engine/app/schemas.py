@@ -97,3 +97,30 @@ class HumanReviewResponse(BaseModel):
     review_id: UUID
     assessment_run_id: UUID
     decision: ReviewDecision
+
+
+class MLBaselinePrediction(BaseModel):
+    model_version: str
+    dataset_version: str
+    synthetic_dataset: bool = True
+    predicted_material_risk_probability: float = Field(ge=0, le=1)
+    elevated_at_demo_threshold: bool
+    threshold: float = Field(ge=0, le=1)
+    feature_values: dict[str, float]
+    disclaimer: str
+
+
+class MLBaselineEvaluation(BaseModel):
+    model_version: str
+    dataset_version: str
+    synthetic_dataset: bool = True
+    samples: int = Field(gt=0)
+    test_samples: int = Field(gt=0)
+    positive_rate: float = Field(ge=0, le=1)
+    roc_auc: float = Field(ge=0, le=1)
+    precision: float = Field(ge=0, le=1)
+    recall: float = Field(ge=0, le=1)
+    brier_score: float = Field(ge=0, le=1)
+    threshold: float = Field(ge=0, le=1)
+    excluded_from_features: list[str]
+    disclaimer: str
