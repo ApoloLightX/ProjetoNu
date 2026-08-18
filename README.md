@@ -8,6 +8,23 @@ The project explores a simple question:
 
 > How can public data, deterministic rules, statistical models and LLM-assisted analysis support traceable SAC risk assessment without turning a probabilistic model into an unquestioned decision-maker?
 
+## Current state
+
+The first end-to-end engineering slice is now implemented:
+
+- Next.js + TypeScript interactive risk console
+- Python + FastAPI deterministic SAC risk engine
+- Explicit separation of inherent risk and observed risk
+- Five SAC risk dimensions
+- Evidence-completeness confidence
+- Human-review gates
+- Decision trace
+- Responsive synthetic/demo experience
+- PostgreSQL/Supabase schema prepared for immutable assessment snapshots and future AI runs
+- GitHub Actions checks for Python lint/tests and TypeScript typecheck/tests/build
+
+The default UI loads an explicitly labeled **synthetic preview**. Clicking **Run live assessment** calls the FastAPI `POST /v1/assessments` endpoint and switches the interface to `LIVE ENGINE` when the request succeeds.
+
 ## Why this exists
 
 Financial institutions need mechanisms to identify, assess, classify and monitor social, environmental and climate risk using consistent, verifiable information, including public information. Brazilian regulation also connects these risks to counterparty due diligence and credit-risk monitoring.
@@ -22,24 +39,6 @@ ATLAS SAC is built as a **portfolio and engineering research project**. It does 
 4. **LLMs assist, they do not own the decision** — model disagreement or weak evidence can force human review.
 5. **Reproducibility matters** — inputs, rules, model versions and AI runs are traceable.
 6. **Synthetic where necessary, real where defensible** — demo datasets are clearly labeled and never presented as real credit performance.
-
-## V1 experience
-
-Input: a synthetic/demo corporate counterparty with CNPJ-like identifier, economic sector, location and evidence.
-
-Output:
-
-- Social risk
-- Environmental risk
-- Climate physical risk
-- Climate transition risk
-- Reputational/context risk
-- Inherent vs. observed risk
-- Evidence completeness
-- Confidence / uncertainty
-- Human-review requirement
-- Evidence graph / decision trace
-- Risk history and drift
 
 ## Architecture
 
@@ -62,15 +61,68 @@ Supabase / PostgreSQL
 Evidence + assessments + model runs + human review
 ```
 
-## Planned stack
+## Stack
 
-- **Frontend:** Next.js, TypeScript
-- **Risk engine:** Python, FastAPI
+- **Frontend:** Next.js, React, TypeScript
+- **Risk engine:** Python, FastAPI, Pydantic
 - **Data:** PostgreSQL / Supabase
-- **ML:** scikit-learn baseline models and transparent feature engineering
-- **AI:** Gemini + Groq, structured outputs, independent reviewer pattern
-- **Testing:** pytest, Vitest, Playwright
-- **CI:** GitHub Actions
+- **ML V2:** scikit-learn baseline models and transparent feature engineering
+- **AI V2:** Gemini + Groq, structured outputs, independent reviewer pattern
+- **Testing:** pytest + Vitest
+- **CI:** GitHub Actions with Ruff, pytest, TypeScript checks, Vitest and production build
+
+## Run locally
+
+### 1. Risk engine
+
+```bash
+cd services/risk-engine
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
+uvicorn app.main:app --reload --port 8000
+```
+
+API documentation: `http://localhost:8000/docs`
+
+### 2. Web app
+
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+The web app defaults to `http://localhost:8000`. For another endpoint:
+
+```bash
+NEXT_PUBLIC_RISK_API_URL=https://your-risk-engine.example
+```
+
+For browser access from a deployed frontend, configure the backend with:
+
+```bash
+RISK_ENGINE_ALLOWED_ORIGINS=https://your-frontend.example
+```
+
+## V1 experience
+
+The synthetic counterparty lab exposes normalized signals so reviewers can change the input and immediately see the impact on:
+
+- Social risk
+- Environmental risk
+- Climate physical risk
+- Climate transition risk
+- Reputational/context risk
+- Inherent vs. observed risk
+- Evidence completeness
+- Confidence / uncertainty
+- Human-review requirement
+- Decision trace
+
+A central design rule is that **low evidence completeness cannot make the counterparty look safer**. It lowers confidence and can force human review.
 
 ## Regulatory and public-policy inspiration
 
@@ -86,32 +138,37 @@ These references define the **problem class and terminology**. ATLAS SAC does no
 
 ### V0 — Foundation
 - [x] Project thesis and guardrails
-- [ ] Monorepo foundation
-- [ ] FastAPI health/risk endpoints
-- [ ] Supabase schema
-- [ ] Synthetic counterparty dataset
-- [ ] Deterministic risk engine v0
+- [x] Repository foundation
+- [x] FastAPI health/risk endpoints
+- [x] Supabase schema
+- [x] Deterministic risk engine v0
+- [x] Automated Python quality gate
 
 ### V1 — Functional demo
-- [ ] Counterparty onboarding
-- [ ] SAC dashboard
-- [ ] Inherent vs. observed risk
-- [ ] Evidence completeness and uncertainty
-- [ ] Evidence graph
-- [ ] Human review state
+- [x] Synthetic counterparty lab
+- [x] SAC dashboard
+- [x] Inherent vs. observed risk
+- [x] Evidence completeness and uncertainty
+- [x] Decision trace
+- [x] Human-review state
+- [x] Next.js → FastAPI integration
+- [x] Web typecheck, unit tests and production build
 
 ### V2 — AI + ML
-- [ ] Statistical/ML baseline
+- [ ] Versioned synthetic ML dataset
+- [ ] Interpretable statistical/ML baseline
 - [ ] Gemini risk analyst
 - [ ] Groq independent reviewer
-- [ ] Model disagreement gate
-- [ ] Evaluation dataset
+- [ ] Model-disagreement gate
+- [ ] AI evaluation cases and safe degradation
 
-### V3 — Monitoring
+### V3 — Monitoring & evidence
+- [ ] Public-data connectors with provenance
+- [ ] Evidence graph with source locators
 - [ ] Risk timeline
 - [ ] Risk drift detection
 - [ ] Reassessment triggers
-- [ ] Replayable assessment runs
+- [ ] Replayable persisted assessment runs
 
 ## Disclaimer
 
