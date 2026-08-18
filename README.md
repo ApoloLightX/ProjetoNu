@@ -10,7 +10,7 @@ The project explores a simple question:
 
 ## Current state
 
-The first end-to-end engineering slice is now implemented:
+The first end-to-end engineering slice is implemented:
 
 - Next.js + TypeScript interactive risk console
 - Python + FastAPI deterministic SAC risk engine
@@ -20,10 +20,14 @@ The first end-to-end engineering slice is now implemented:
 - Human-review gates
 - Decision trace
 - Responsive synthetic/demo experience
-- PostgreSQL/Supabase schema prepared for immutable assessment snapshots and future AI runs
+- PostgreSQL/Supabase schema for counterparties, evidence, immutable assessment snapshots and human reviews
+- Server-only atomic persistence RPC, replay endpoint and separate human-review endpoint
+- RLS-enabled assessment tables with no direct anonymous/authenticated access
 - GitHub Actions checks for Python lint/tests and TypeScript typecheck/tests/build
 
 The default UI loads an explicitly labeled **synthetic preview**. Clicking **Run live assessment** calls the FastAPI `POST /v1/assessments` endpoint and switches the interface to `LIVE ENGINE` when the request succeeds.
+
+Persistence code is implemented but intentionally **fails closed** until a dedicated Supabase project is configured and the migrations are applied. The service-role key belongs only on the backend.
 
 ## Why this exists
 
@@ -58,13 +62,13 @@ Rules  Statistical/ML    AI Review Layer
 Supabase / PostgreSQL
         |
         v
-Evidence + assessments + model runs + human review
+Evidence + immutable assessments + model runs + human review
 ```
 
 ## Stack
 
 - **Frontend:** Next.js, React, TypeScript
-- **Risk engine:** Python, FastAPI, Pydantic
+- **Risk engine:** Python, FastAPI, Pydantic, HTTPX
 - **Data:** PostgreSQL / Supabase
 - **ML V2:** scikit-learn baseline models and transparent feature engineering
 - **AI V2:** Gemini + Groq, structured outputs, independent reviewer pattern
@@ -106,6 +110,26 @@ For browser access from a deployed frontend, configure the backend with:
 ```bash
 RISK_ENGINE_ALLOWED_ORIGINS=https://your-frontend.example
 ```
+
+## Persistence and replay
+
+Apply the migrations in `supabase/migrations` to a **dedicated** Supabase/PostgreSQL project, then configure server-only environment variables:
+
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=server-only-secret
+```
+
+Available endpoints:
+
+```text
+POST /v1/assessments                 deterministic assessment, no persistence required
+POST /v1/assessments/persist         atomic counterparty + evidence + assessment snapshot
+GET  /v1/assessments/{run_id}        replay an immutable stored result
+POST /v1/assessments/{run_id}/reviews persist a separate human decision
+```
+
+The persistence RPC stores input and result snapshots with a methodology version so a past decision can be inspected without silently recomputing it using future rules.
 
 ## V1 experience
 
@@ -154,6 +178,16 @@ These references define the **problem class and terminology**. ATLAS SAC does no
 - [x] Next.js → FastAPI integration
 - [x] Web typecheck, unit tests and production build
 
+### V1.1 — Persistence & governance
+- [x] Immutable assessment snapshots
+- [x] Atomic evidence + assessment persistence function
+- [x] Methodology version stored per run
+- [x] Replay API
+- [x] Human review stored separately from model output
+- [x] RLS / server-only persistence boundary
+- [ ] Apply migrations to a dedicated Supabase project
+- [ ] Persist/replay from the public demo UI
+
 ### V2 — AI + ML
 - [ ] Versioned synthetic ML dataset
 - [ ] Interpretable statistical/ML baseline
@@ -168,7 +202,6 @@ These references define the **problem class and terminology**. ATLAS SAC does no
 - [ ] Risk timeline
 - [ ] Risk drift detection
 - [ ] Reassessment triggers
-- [ ] Replayable persisted assessment runs
 
 ## Disclaimer
 
