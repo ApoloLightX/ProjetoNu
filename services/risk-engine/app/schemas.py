@@ -191,6 +191,8 @@ class AIProviderRun(BaseModel):
     provider: str
     model: str
     role: str
+    prompt_version: str
+    input_hash: str
     latency_ms: int = Field(ge=0)
 
 
