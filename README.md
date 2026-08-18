@@ -23,6 +23,11 @@ The project currently includes:
 - Versioned synthetic ML dataset generator
 - scikit-learn Logistic Regression baseline with holdout evaluation
 - ROC-AUC, precision, recall and Brier-score reporting
+- Gemini structured risk analyst
+- Groq independent adversarial reviewer
+- Evidence-reference allowlist and prompt-injection boundary
+- Safe degradation when AI providers fail or return ungrounded output
+- Versioned prompt metadata, input hashes and optional server-only AI run trace persistence
 - GitHub Actions checks for Python lint/tests and TypeScript typecheck/tests/build
 
 The default UI loads an explicitly labeled **synthetic preview**. Clicking **Run live assessment** calls the FastAPI `POST /v1/assessments` endpoint and switches the interface to `LIVE ENGINE` when the request succeeds.
@@ -41,7 +46,7 @@ ATLAS SAC is built as a **portfolio and engineering research project**. It does 
 2. **Inherent risk is not observed misconduct** — sector/geographic exposure and company-specific evidence are modeled separately.
 3. **Uncertainty is explicit** — missing data reduces confidence; absence of evidence is not treated as absence of risk.
 4. **LLMs assist, they do not own the decision** — model disagreement or weak evidence can force human review.
-5. **Reproducibility matters** — inputs, rules, model versions and AI runs are traceable.
+5. **Reproducibility matters** — inputs, rules, model versions, prompt versions and AI runs are traceable.
 6. **Synthetic where necessary, real where defensible** — demo datasets are clearly labeled and never presented as real credit performance.
 
 ## Architecture
@@ -52,17 +57,20 @@ Next.js / TypeScript
         v
 Python / FastAPI Risk Engine
         |
-  +-----+--------------------+
-  |     |                    |
-Rules  Statistical/ML    AI Review Layer
-  |     |              Gemini + Groq
-  +-----+--------------------+
+  +-----+------------------------+
+  |     |                        |
+Rules  Statistical/ML      AI Review Layer
+  |     |                 Gemini -> Groq
+  +-----+------------------------+
+        |
+        v
+Human-review gate
         |
         v
 Supabase / PostgreSQL
         |
         v
-Evidence + immutable assessments + model runs + human review
+Evidence + immutable assessments + AI traces + human review
 ```
 
 ## Stack
@@ -71,7 +79,7 @@ Evidence + immutable assessments + model runs + human review
 - **Risk engine:** Python, FastAPI, Pydantic, HTTPX
 - **Data:** PostgreSQL / Supabase
 - **ML:** scikit-learn, versioned synthetic data, Logistic Regression baseline
-- **AI next:** Gemini + Groq, structured outputs, independent reviewer pattern
+- **AI:** Gemini + Groq, structured outputs, grounded evidence references, independent reviewer pattern
 - **Testing:** pytest + Vitest
 - **CI:** GitHub Actions with Ruff, pytest, TypeScript checks, Vitest and production build
 
@@ -146,6 +154,26 @@ The first model is a Logistic Regression pipeline trained on a reproducible synt
 
 See [`docs/ml-baseline.md`](docs/ml-baseline.md) for the synthetic-label function, feature definitions, evaluation design and leakage limitations.
 
+## AI-assisted review
+
+```text
+POST /v1/ai/assess
+```
+
+The AI path follows a dual-model pattern:
+
+1. **Gemini analyst** interprets only the supplied deterministic result, synthetic ML signal and enumerated evidence.
+2. Every analyst finding must cite an allowed reference such as `DET:environmental_risk`, `ML:synthetic_baseline` or `E1`.
+3. **Groq reviewer** independently challenges unsupported claims, inherent-vs-observed confusion, missing-evidence assumptions and misuse of synthetic ML output.
+4. Model disagreement can force `HUMAN_REVIEW_REQUIRED`.
+5. Unknown evidence references, invalid structured output, missing API keys or provider failures safely degrade to the deterministic path.
+
+Evidence payloads are explicitly treated as **untrusted data**. Instructions embedded inside documents or payloads cannot legitimately redefine the task or change policy.
+
+Successful runs expose provider, model, role, prompt version, input SHA-256 and latency. If an existing `assessment_run_id` is supplied and Supabase is configured, the server can persist the structured AI trace without storing raw prompts or secrets.
+
+See [`docs/ai-review.md`](docs/ai-review.md) for the complete control design and limitations.
+
 ## V1 experience
 
 The synthetic counterparty lab exposes normalized signals so reviewers can change the input and immediately see the impact on:
@@ -200,6 +228,7 @@ These references define the **problem class and terminology**. ATLAS SAC does no
 - [x] Replay API
 - [x] Human review stored separately from model output
 - [x] RLS / server-only persistence boundary
+- [x] AI-run trace RPC without raw prompts/secrets
 - [ ] Apply migrations to a dedicated Supabase project
 - [ ] Persist/replay from the public demo UI
 
@@ -207,10 +236,14 @@ These references define the **problem class and terminology**. ATLAS SAC does no
 - [x] Versioned synthetic ML dataset
 - [x] Interpretable statistical/ML baseline
 - [x] Holdout metrics and leakage documentation
-- [ ] Gemini risk analyst
-- [ ] Groq independent reviewer
-- [ ] Model-disagreement gate
-- [ ] AI evaluation cases and safe degradation
+- [x] Gemini structured risk analyst
+- [x] Groq independent reviewer
+- [x] Model-disagreement gate
+- [x] Evidence-reference grounding
+- [x] Prompt-injection boundary for untrusted evidence
+- [x] Safe AI degradation tests
+- [ ] Verify real provider calls using deployment secrets
+- [ ] Surface ML + AI review in the public UI
 
 ### V3 — Monitoring & evidence
 - [ ] Public-data connectors with provenance
