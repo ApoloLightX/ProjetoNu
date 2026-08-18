@@ -5,7 +5,6 @@ import httpx
 from app.ai_providers import GeminiAnalystClient, GroqReviewerClient
 from app.schemas import AIReviewerVerdict
 
-
 ANALYST_JSON = {
     "summary": "Evidence-limited demo analysis.",
     "findings": [
@@ -68,11 +67,7 @@ def test_groq_uses_strict_json_schema_and_validates_response():
         captured["body"] = json.loads(request.read().decode("utf-8"))
         return httpx.Response(
             200,
-            json={
-                "choices": [
-                    {"message": {"content": json.dumps(REVIEWER_JSON)}}
-                ]
-            },
+            json={"choices": [{"message": {"content": json.dumps(REVIEWER_JSON)}}]},
         )
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
