@@ -7,7 +7,7 @@ from typing import TypeVar
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from .schemas import AIRiskAnalysis, AIReviewerOutput
+from .schemas import AIReviewerOutput, AIRiskAnalysis
 
 T = TypeVar("T", bound=BaseModel)
 
