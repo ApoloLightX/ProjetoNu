@@ -1,6 +1,6 @@
 [project]
 name = "atlas-sac-risk-engine"
-version = "0.2.0"
+version = "0.3.0"
 description = "Transparent SAC risk scoring engine for the ATLAS SAC portfolio project"
 requires-python = ">=3.11"
 dependencies = [
@@ -8,6 +8,7 @@ dependencies = [
   "uvicorn[standard]>=0.35,<1.0",
   "pydantic>=2.11,<3.0",
   "httpx>=0.28,<1.0",
+  "scikit-learn>=1.9,<2.0",
 ]
 
 [project.optional-dependencies]
