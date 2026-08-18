@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from .ml_baseline import evaluate_baseline, predict_baseline
 from .persistence import (
     PersistenceError,
     PersistenceNotConfigured,
@@ -15,6 +16,8 @@ from .schemas import (
     CounterpartyRiskInput,
     HumanReviewRequest,
     HumanReviewResponse,
+    MLBaselineEvaluation,
+    MLBaselinePrediction,
     PersistAssessmentRequest,
     PersistedAssessmentResponse,
     ReplayAssessmentResponse,
@@ -23,7 +26,7 @@ from .schemas import (
 
 app = FastAPI(
     title="ATLAS SAC Risk Engine",
-    version="0.3.0",
+    version="0.4.0",
     description=(
         "Experimental, explainable social, environmental and climate risk engine. "
         "Portfolio use only; not for real credit decisions."
@@ -32,10 +35,7 @@ app = FastAPI(
 
 allowed_origins = [
     origin.strip()
-    for origin in os.environ.get(
-        "RISK_ENGINE_ALLOWED_ORIGINS",
-        "http://localhost:3000",
-    ).split(",")
+    for origin in os.environ.get("RISK_ENGINE_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
     if origin.strip()
 ]
 
@@ -61,12 +61,22 @@ def _persistence_http_error(exc: PersistenceError) -> HTTPException:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "atlas-sac-risk-engine", "version": "0.3.0"}
+    return {"status": "ok", "service": "atlas-sac-risk-engine", "version": "0.4.0"}
 
 
 @app.post("/v1/assessments", response_model=SACAssessment)
 def create_assessment(payload: CounterpartyRiskInput) -> SACAssessment:
     return assess_counterparty(payload)
+
+
+@app.get("/v1/ml/evaluation", response_model=MLBaselineEvaluation)
+def ml_baseline_evaluation() -> MLBaselineEvaluation:
+    return evaluate_baseline()
+
+
+@app.post("/v1/ml/predict", response_model=MLBaselinePrediction)
+def ml_baseline_prediction(payload: CounterpartyRiskInput) -> MLBaselinePrediction:
+    return predict_baseline(payload)
 
 
 @app.post("/v1/assessments/persist", response_model=PersistedAssessmentResponse)
@@ -75,15 +85,12 @@ def persist_assessment(payload: PersistAssessmentRequest) -> PersistedAssessment
     repository = _repository()
     try:
         run_id = repository.persist_assessment(
-            payload,
-            assessment,
-            methodology_version=METHODOLOGY_VERSION,
+            payload, assessment, methodology_version=METHODOLOGY_VERSION
         )
     except PersistenceError as exc:
         raise _persistence_http_error(exc) from exc
     finally:
         repository.close()
-
     return PersistedAssessmentResponse(run_id=run_id, assessment=assessment)
 
 
@@ -109,7 +116,6 @@ def record_human_review(run_id: UUID, payload: HumanReviewRequest) -> HumanRevie
         raise _persistence_http_error(exc) from exc
     finally:
         repository.close()
-
     return HumanReviewResponse(
         review_id=review_id,
         assessment_run_id=run_id,
