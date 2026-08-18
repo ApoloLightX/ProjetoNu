@@ -155,6 +155,12 @@ class AIDecisionGate(str, Enum):
     DETERMINISTIC_ONLY = "DETERMINISTIC_ONLY"
 
 
+class AITracePersistence(str, Enum):
+    NOT_REQUESTED = "NOT_REQUESTED"
+    STORED = "STORED"
+    FAILED = "FAILED"
+
+
 class AIClaim(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -185,6 +191,7 @@ class AIReviewerOutput(BaseModel):
 class AIAssessmentRequest(BaseModel):
     counterparty: CounterpartyRiskInput
     evidence: list[EvidenceInput] = Field(default_factory=list, max_length=40)
+    assessment_run_id: UUID | None = None
 
 
 class AIProviderRun(BaseModel):
@@ -206,4 +213,6 @@ class AIAssessmentResponse(BaseModel):
     decision_gate: AIDecisionGate
     degradation_reason: str | None = None
     provider_runs: list[AIProviderRun]
+    trace_persistence: AITracePersistence = AITracePersistence.NOT_REQUESTED
+    trace_persistence_reason: str | None = None
     disclaimer: str
