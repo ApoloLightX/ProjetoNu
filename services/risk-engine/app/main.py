@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from .ai_review import run_ai_assessment
 from .ml_baseline import evaluate_baseline, predict_baseline
 from .persistence import (
     PersistenceError,
@@ -13,6 +14,8 @@ from .persistence import (
 )
 from .risk_engine import METHODOLOGY_VERSION, assess_counterparty
 from .schemas import (
+    AIAssessmentRequest,
+    AIAssessmentResponse,
     CounterpartyRiskInput,
     HumanReviewRequest,
     HumanReviewResponse,
@@ -26,7 +29,7 @@ from .schemas import (
 
 app = FastAPI(
     title="ATLAS SAC Risk Engine",
-    version="0.4.0",
+    version="0.5.0",
     description=(
         "Experimental, explainable social, environmental and climate risk engine. "
         "Portfolio use only; not for real credit decisions."
@@ -61,7 +64,7 @@ def _persistence_http_error(exc: PersistenceError) -> HTTPException:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "atlas-sac-risk-engine", "version": "0.4.0"}
+    return {"status": "ok", "service": "atlas-sac-risk-engine", "version": "0.5.0"}
 
 
 @app.post("/v1/assessments", response_model=SACAssessment)
@@ -77,6 +80,11 @@ def ml_baseline_evaluation() -> MLBaselineEvaluation:
 @app.post("/v1/ml/predict", response_model=MLBaselinePrediction)
 def ml_baseline_prediction(payload: CounterpartyRiskInput) -> MLBaselinePrediction:
     return predict_baseline(payload)
+
+
+@app.post("/v1/ai/assess", response_model=AIAssessmentResponse)
+def ai_assisted_assessment(payload: AIAssessmentRequest) -> AIAssessmentResponse:
+    return run_ai_assessment(payload)
 
 
 @app.post("/v1/assessments/persist", response_model=PersistedAssessmentResponse)
