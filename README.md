@@ -10,19 +10,19 @@ The project explores a simple question:
 
 ## Current state
 
-The first end-to-end engineering slice is implemented:
+The project currently includes:
 
 - Next.js + TypeScript interactive risk console
 - Python + FastAPI deterministic SAC risk engine
 - Explicit separation of inherent risk and observed risk
 - Five SAC risk dimensions
-- Evidence-completeness confidence
-- Human-review gates
+- Evidence-completeness confidence and human-review gates
 - Decision trace
-- Responsive synthetic/demo experience
-- PostgreSQL/Supabase schema for counterparties, evidence, immutable assessment snapshots and human reviews
-- Server-only atomic persistence RPC, replay endpoint and separate human-review endpoint
-- RLS-enabled assessment tables with no direct anonymous/authenticated access
+- PostgreSQL/Supabase immutable assessment persistence and replay layer
+- RLS-enabled assessment tables with server-only privileged writes
+- Versioned synthetic ML dataset generator
+- scikit-learn Logistic Regression baseline with holdout evaluation
+- ROC-AUC, precision, recall and Brier-score reporting
 - GitHub Actions checks for Python lint/tests and TypeScript typecheck/tests/build
 
 The default UI loads an explicitly labeled **synthetic preview**. Clicking **Run live assessment** calls the FastAPI `POST /v1/assessments` endpoint and switches the interface to `LIVE ENGINE` when the request succeeds.
@@ -70,8 +70,8 @@ Evidence + immutable assessments + model runs + human review
 - **Frontend:** Next.js, React, TypeScript
 - **Risk engine:** Python, FastAPI, Pydantic, HTTPX
 - **Data:** PostgreSQL / Supabase
-- **ML V2:** scikit-learn baseline models and transparent feature engineering
-- **AI V2:** Gemini + Groq, structured outputs, independent reviewer pattern
+- **ML:** scikit-learn, versioned synthetic data, Logistic Regression baseline
+- **AI next:** Gemini + Groq, structured outputs, independent reviewer pattern
 - **Testing:** pytest + Vitest
 - **CI:** GitHub Actions with Ruff, pytest, TypeScript checks, Vitest and production build
 
@@ -123,13 +123,28 @@ SUPABASE_SERVICE_ROLE_KEY=server-only-secret
 Available endpoints:
 
 ```text
-POST /v1/assessments                 deterministic assessment, no persistence required
-POST /v1/assessments/persist         atomic counterparty + evidence + assessment snapshot
-GET  /v1/assessments/{run_id}        replay an immutable stored result
+POST /v1/assessments                  deterministic assessment, no persistence required
+POST /v1/assessments/persist          atomic counterparty + evidence + assessment snapshot
+GET  /v1/assessments/{run_id}         replay an immutable stored result
 POST /v1/assessments/{run_id}/reviews persist a separate human decision
 ```
 
 The persistence RPC stores input and result snapshots with a methodology version so a past decision can be inspected without silently recomputing it using future rules.
+
+## Statistical baseline
+
+The ML layer is deliberately separate from the deterministic risk rules.
+
+```text
+GET  /v1/ml/evaluation
+POST /v1/ml/predict
+```
+
+The first model is a Logistic Regression pipeline trained on a reproducible synthetic dataset. The API exposes holdout ROC-AUC, precision, recall and Brier score rather than presenting one flattering metric in isolation.
+
+`evidence_completeness` is intentionally excluded from ML risk features. Missing evidence affects confidence and human review in the deterministic layer, not the model's risk probability.
+
+See [`docs/ml-baseline.md`](docs/ml-baseline.md) for the synthetic-label function, feature definitions, evaluation design and leakage limitations.
 
 ## V1 experience
 
@@ -189,8 +204,9 @@ These references define the **problem class and terminology**. ATLAS SAC does no
 - [ ] Persist/replay from the public demo UI
 
 ### V2 — AI + ML
-- [ ] Versioned synthetic ML dataset
-- [ ] Interpretable statistical/ML baseline
+- [x] Versioned synthetic ML dataset
+- [x] Interpretable statistical/ML baseline
+- [x] Holdout metrics and leakage documentation
 - [ ] Gemini risk analyst
 - [ ] Groq independent reviewer
 - [ ] Model-disagreement gate
