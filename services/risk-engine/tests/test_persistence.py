@@ -7,10 +7,16 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.persistence import SupabaseRestRepository, stable_external_ref
 from app.risk_engine import METHODOLOGY_VERSION, assess_counterparty
-from app.schemas import CounterpartyRiskInput, EvidenceInput, PersistAssessmentRequest
+from app.schemas import (
+    AIProviderRun,
+    CounterpartyRiskInput,
+    EvidenceInput,
+    PersistAssessmentRequest,
+)
 
 RUN_ID = UUID("11111111-1111-4111-8111-111111111111")
 COUNTERPARTY_ID = UUID("22222222-2222-4222-8222-222222222222")
+AI_RUN_ID = UUID("33333333-3333-4333-8333-333333333333")
 
 
 def _counterparty() -> CounterpartyRiskInput:
@@ -110,6 +116,43 @@ def test_fetch_assessment_rehydrates_immutable_result_snapshot():
     assert replay.counterparty_id == COUNTERPARTY_ID
     assert replay.assessment.overall_score == assessment.overall_score
     assert replay.assessment.human_review_required is True
+
+
+def test_record_ai_run_persists_version_hash_and_structured_output_not_raw_prompt():
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["path"] = request.url.path
+        captured["body"] = request.read().decode("utf-8")
+        return httpx.Response(200, json=str(AI_RUN_ID))
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    repository = SupabaseRestRepository(
+        "https://atlas.example.supabase.co",
+        "test-service-role",
+        client=client,
+    )
+    provider_run = AIProviderRun(
+        provider="gemini",
+        model="gemini-demo",
+        role="ANALYST",
+        prompt_version="analyst-grounded-v2",
+        input_hash="a" * 64,
+        latency_ms=123,
+    )
+
+    ai_run_id = repository.record_ai_run(
+        RUN_ID,
+        provider_run,
+        {"summary": "structured output only"},
+    )
+
+    assert ai_run_id == AI_RUN_ID
+    assert captured["path"].endswith("/rest/v1/rpc/record_ai_run_trace")
+    assert '"p_prompt_version":"analyst-grounded-v2"' in captured["body"]
+    assert f'"p_input_hash":"{"a" * 64}"' in captured["body"]
+    assert '"p_structured_output":{"summary":"structured output only"}' in captured["body"]
+    assert "raw_prompt" not in captured["body"]
 
 
 def test_persist_endpoint_fails_closed_when_supabase_is_not_configured(monkeypatch):

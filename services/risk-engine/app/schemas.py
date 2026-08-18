@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RiskBand(str, Enum):
@@ -123,4 +123,96 @@ class MLBaselineEvaluation(BaseModel):
     brier_score: float = Field(ge=0, le=1)
     threshold: float = Field(ge=0, le=1)
     excluded_from_features: list[str]
+    disclaimer: str
+
+
+class AIConfidence(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+
+class AIAnalystAction(str, Enum):
+    NO_ADDITIONAL_ACTION = "NO_ADDITIONAL_ACTION"
+    HUMAN_REVIEW = "HUMAN_REVIEW"
+    REQUEST_MORE_INFORMATION = "REQUEST_MORE_INFORMATION"
+
+
+class AIReviewerVerdict(str, Enum):
+    AGREE = "AGREE"
+    CHALLENGE = "CHALLENGE"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+
+
+class AIReviewStatus(str, Enum):
+    COMPLETE = "COMPLETE"
+    DEGRADED = "DEGRADED"
+
+
+class AIDecisionGate(str, Enum):
+    ASSISTIVE_OUTPUT_ONLY = "ASSISTIVE_OUTPUT_ONLY"
+    HUMAN_REVIEW_REQUIRED = "HUMAN_REVIEW_REQUIRED"
+    DETERMINISTIC_ONLY = "DETERMINISTIC_ONLY"
+
+
+class AITracePersistence(str, Enum):
+    NOT_REQUESTED = "NOT_REQUESTED"
+    STORED = "STORED"
+    FAILED = "FAILED"
+
+
+class AIClaim(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    finding: str = Field(min_length=3, max_length=800)
+    evidence_refs: list[str] = Field(max_length=20)
+    confidence: AIConfidence
+
+
+class AIRiskAnalysis(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str = Field(min_length=5, max_length=1600)
+    findings: list[AIClaim] = Field(max_length=12)
+    uncertainty_flags: list[str] = Field(max_length=12)
+    recommended_action: AIAnalystAction
+
+
+class AIReviewerOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    verdict: AIReviewerVerdict
+    unsupported_claims: list[str] = Field(max_length=12)
+    contradictions: list[str] = Field(max_length=12)
+    rationale: str = Field(min_length=5, max_length=1600)
+    review_required: bool
+
+
+class AIAssessmentRequest(BaseModel):
+    counterparty: CounterpartyRiskInput
+    evidence: list[EvidenceInput] = Field(default_factory=list, max_length=40)
+    assessment_run_id: UUID | None = None
+
+
+class AIProviderRun(BaseModel):
+    provider: str
+    model: str
+    role: str
+    prompt_version: str
+    input_hash: str
+    latency_ms: int = Field(ge=0)
+
+
+class AIAssessmentResponse(BaseModel):
+    status: AIReviewStatus
+    deterministic_assessment: SACAssessment
+    ml_prediction: MLBaselinePrediction
+    analyst: AIRiskAnalysis | None = None
+    reviewer: AIReviewerOutput | None = None
+    disagreement: bool | None = None
+    decision_gate: AIDecisionGate
+    degradation_reason: str | None = None
+    provider_runs: list[AIProviderRun]
+    trace_persistence: AITracePersistence = AITracePersistence.NOT_REQUESTED
+    trace_persistence_reason: str | None = None
     disclaimer: str
