@@ -37,4 +37,31 @@ export type SACAssessment = {
   methodology: string;
 };
 
+export type MLBaselinePrediction = {
+  model_version: string;
+  dataset_version: string;
+  synthetic_dataset: true;
+  predicted_material_risk_probability: number;
+  elevated_at_demo_threshold: boolean;
+  threshold: number;
+  feature_values: Record<string, number>;
+  disclaimer: string;
+};
+
+export type MLBaselineEvaluation = {
+  model_version: string;
+  dataset_version: string;
+  synthetic_dataset: true;
+  samples: number;
+  test_samples: number;
+  positive_rate: number;
+  roc_auc: number;
+  precision: number;
+  recall: number;
+  brier_score: number;
+  threshold: number;
+  excluded_from_features: string[];
+  disclaimer: string;
+};
+
 export type AssessmentMode = "preview" | "live" | "error";
