@@ -1,4 +1,9 @@
-from .schemas import CounterpartyRiskInput, RiskBand, RiskDimension, SACAssessment
+from .schemas import (
+    CounterpartyRiskInput,
+    RiskBand,
+    RiskDimension,
+    SACAssessment,
+)
 
 
 METHODOLOGY = (
