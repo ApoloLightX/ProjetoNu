@@ -16,6 +16,7 @@ from .risk_engine import METHODOLOGY_VERSION, assess_counterparty
 from .schemas import (
     AIAssessmentRequest,
     AIAssessmentResponse,
+    AITracePersistence,
     CounterpartyRiskInput,
     HumanReviewRequest,
     HumanReviewResponse,
@@ -62,6 +63,46 @@ def _persistence_http_error(exc: PersistenceError) -> HTTPException:
     return HTTPException(status_code=502, detail=str(exc))
 
 
+def _persist_ai_trace(
+    payload: AIAssessmentRequest,
+    response: AIAssessmentResponse,
+) -> AIAssessmentResponse:
+    if payload.assessment_run_id is None:
+        return response
+
+    try:
+        repository = SupabaseRestRepository.from_env()
+    except PersistenceNotConfigured as exc:
+        response.trace_persistence = AITracePersistence.FAILED
+        response.trace_persistence_reason = str(exc)
+        return response
+
+    try:
+        for provider_run in response.provider_runs:
+            if provider_run.role == "ANALYST" and response.analyst is not None:
+                structured_output = response.analyst.model_dump(mode="json")
+            elif provider_run.role == "REVIEWER" and response.reviewer is not None:
+                structured_output = response.reviewer.model_dump(mode="json")
+            else:
+                continue
+
+            repository.record_ai_run(
+                payload.assessment_run_id,
+                provider_run,
+                structured_output,
+            )
+    except PersistenceError as exc:
+        response.trace_persistence = AITracePersistence.FAILED
+        response.trace_persistence_reason = str(exc)
+    else:
+        response.trace_persistence = AITracePersistence.STORED
+        response.trace_persistence_reason = None
+    finally:
+        repository.close()
+
+    return response
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "atlas-sac-risk-engine", "version": "0.5.0"}
@@ -84,7 +125,8 @@ def ml_baseline_prediction(payload: CounterpartyRiskInput) -> MLBaselinePredicti
 
 @app.post("/v1/ai/assess", response_model=AIAssessmentResponse)
 def ai_assisted_assessment(payload: AIAssessmentRequest) -> AIAssessmentResponse:
-    return run_ai_assessment(payload)
+    response = run_ai_assessment(payload)
+    return _persist_ai_trace(payload, response)
 
 
 @app.post("/v1/assessments/persist", response_model=PersistedAssessmentResponse)
