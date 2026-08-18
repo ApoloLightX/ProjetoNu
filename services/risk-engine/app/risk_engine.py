@@ -5,6 +5,7 @@ from .schemas import (
     SACAssessment,
 )
 
+METHODOLOGY_VERSION = "atlas-sac-v0.2"
 METHODOLOGY = (
     "ATLAS SAC v0 demo heuristic. Scores are transparent normalized features for portfolio "
     "demonstration only. They are not calibrated probabilities, credit scores or regulatory ratings."
