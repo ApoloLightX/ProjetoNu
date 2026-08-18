@@ -1,5 +1,7 @@
 import type {
+  AIAssessmentResponse,
   CounterpartyRiskInput,
+  EvidenceInput,
   MLBaselineEvaluation,
   MLBaselinePrediction,
   SACAssessment,
@@ -37,6 +39,18 @@ export async function runMlPrediction(
 export async function loadMlEvaluation(): Promise<MLBaselineEvaluation> {
   const response = await fetch(`${API_URL}/v1/ml/evaluation`, { method: "GET" });
   return jsonOrThrow<MLBaselineEvaluation>(response, "ML evaluation");
+}
+
+export async function runAiAssessment(
+  input: CounterpartyRiskInput,
+  evidence: EvidenceInput[],
+): Promise<AIAssessmentResponse> {
+  const response = await fetch(`${API_URL}/v1/ai/assess`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ counterparty: input, evidence }),
+  });
+  return jsonOrThrow<AIAssessmentResponse>(response, "AI review");
 }
 
 export function apiUrl(): string {

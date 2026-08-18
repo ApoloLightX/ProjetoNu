@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./labs.css";
 
 export const metadata: Metadata = {
   title: "ATLAS SAC | Risk Intelligence",

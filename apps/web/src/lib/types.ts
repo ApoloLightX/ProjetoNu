@@ -64,4 +64,61 @@ export type MLBaselineEvaluation = {
   disclaimer: string;
 };
 
+export type EvidenceInput = {
+  evidence_type: string;
+  source_name: string;
+  source_url?: string | null;
+  observed_at?: string | null;
+  payload: Record<string, unknown>;
+  is_synthetic: boolean;
+};
+
+export type AIClaim = {
+  finding: string;
+  evidence_refs: string[];
+  confidence: "LOW" | "MEDIUM" | "HIGH";
+};
+
+export type AIRiskAnalysis = {
+  summary: string;
+  findings: AIClaim[];
+  uncertainty_flags: string[];
+  recommended_action:
+    | "NO_ADDITIONAL_ACTION"
+    | "HUMAN_REVIEW"
+    | "REQUEST_MORE_INFORMATION";
+};
+
+export type AIReviewerOutput = {
+  verdict: "AGREE" | "CHALLENGE" | "INSUFFICIENT_EVIDENCE";
+  unsupported_claims: string[];
+  contradictions: string[];
+  rationale: string;
+  review_required: boolean;
+};
+
+export type AIProviderRun = {
+  provider: string;
+  model: string;
+  role: string;
+  prompt_version: string;
+  input_hash: string;
+  latency_ms: number;
+};
+
+export type AIAssessmentResponse = {
+  status: "COMPLETE" | "DEGRADED";
+  deterministic_assessment: SACAssessment;
+  ml_prediction: MLBaselinePrediction;
+  analyst: AIRiskAnalysis | null;
+  reviewer: AIReviewerOutput | null;
+  disagreement: boolean | null;
+  decision_gate: "ASSISTIVE_OUTPUT_ONLY" | "HUMAN_REVIEW_REQUIRED" | "DETERMINISTIC_ONLY";
+  degradation_reason: string | null;
+  provider_runs: AIProviderRun[];
+  trace_persistence: "NOT_REQUESTED" | "STORED" | "FAILED";
+  trace_persistence_reason: string | null;
+  disclaimer: string;
+};
+
 export type AssessmentMode = "preview" | "live" | "error";

@@ -1,11 +1,26 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
-import { apiUrl, runAssessment } from "@/lib/api";
+import {
+  apiUrl,
+  loadMlEvaluation,
+  runAiAssessment,
+  runAssessment,
+  runMlPrediction,
+} from "@/lib/api";
 import { DEMO_ASSESSMENT, DEMO_INPUT } from "@/lib/demo";
 import { bandLabel, dimensionsOf, toPercent } from "@/lib/risk";
-import type { AssessmentMode, CounterpartyRiskInput, RiskBand, SACAssessment } from "@/lib/types";
+import type {
+  AIAssessmentResponse,
+  AssessmentMode,
+  CounterpartyRiskInput,
+  EvidenceInput,
+  MLBaselineEvaluation,
+  MLBaselinePrediction,
+  RiskBand,
+  SACAssessment,
+} from "@/lib/types";
 
 const sliderFields: Array<{
   key: keyof CounterpartyRiskInput;
@@ -57,7 +72,10 @@ const sliderFields: Array<{
 function ScoreBar({ score, band }: { score: number; band: RiskBand }) {
   return (
     <div className="score-track" aria-label={`${toPercent(score)}%`}>
-      <span className={`score-fill band-${band.toLowerCase()}`} style={{ width: `${toPercent(score)}%` }} />
+      <span
+        className={`score-fill band-${band.toLowerCase()}`}
+        style={{ width: `${toPercent(score)}%` }}
+      />
     </div>
   );
 }
@@ -68,7 +86,17 @@ function StatusPill({ mode }: { mode: AssessmentMode }) {
   return <span className="status-pill preview">SYNTHETIC PREVIEW</span>;
 }
 
-function DimensionCard({ label, score, band, drivers }: { label: string; score: number; band: RiskBand; drivers: string[] }) {
+function DimensionCard({
+  label,
+  score,
+  band,
+  drivers,
+}: {
+  label: string;
+  score: number;
+  band: RiskBand;
+  drivers: string[];
+}) {
   return (
     <article className="dimension-card">
       <div className="dimension-head">
@@ -88,14 +116,42 @@ function DimensionCard({ label, score, band, drivers }: { label: string; score: 
   );
 }
 
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="metric-cell">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [input, setInput] = useState<CounterpartyRiskInput>(DEMO_INPUT);
   const [assessment, setAssessment] = useState<SACAssessment>(DEMO_ASSESSMENT);
   const [mode, setMode] = useState<AssessmentMode>("preview");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mlPrediction, setMlPrediction] = useState<MLBaselinePrediction | null>(null);
+  const [mlEvaluation, setMlEvaluation] = useState<MLBaselineEvaluation | null>(null);
+  const [aiReview, setAiReview] = useState<AIAssessmentResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const dimensions = useMemo(() => dimensionsOf(assessment), [assessment]);
+
+  useEffect(() => {
+    let active = true;
+    loadMlEvaluation()
+      .then((result) => {
+        if (active) setMlEvaluation(result);
+      })
+      .catch(() => {
+        if (active) setMlEvaluation(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function updateText(key: "company_name" | "sector" | "region", value: string) {
     setInput((current) => ({ ...current, [key]: value }));
@@ -109,9 +165,15 @@ export default function HomePage() {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setAiReview(null);
+    setAiError(null);
     try {
-      const result = await runAssessment(input);
-      setAssessment(result);
+      const [riskResult, modelResult] = await Promise.all([
+        runAssessment(input),
+        runMlPrediction(input),
+      ]);
+      setAssessment(riskResult);
+      setMlPrediction(modelResult);
       setMode("live");
     } catch (err) {
       setMode("error");
@@ -121,18 +183,49 @@ export default function HomePage() {
     }
   }
 
+  async function runDualModelReview() {
+    setAiLoading(true);
+    setAiError(null);
+    const evidence: EvidenceInput[] = [
+      {
+        evidence_type: "synthetic_demo_context",
+        source_name: "ATLAS synthetic counterparty lab",
+        payload: {
+          sector: input.sector,
+          region: input.region,
+          note: "Synthetic user-controlled demo signals. Not an external factual source.",
+        },
+        is_synthetic: true,
+      },
+    ];
+
+    try {
+      setAiReview(await runAiAssessment(input, evidence));
+    } catch (err) {
+      setAiReview(null);
+      setAiError(err instanceof Error ? err.message : "A revisão de IA não pôde ser executada.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   function resetDemo() {
     setInput(DEMO_INPUT);
     setAssessment(DEMO_ASSESSMENT);
+    setMlPrediction(null);
+    setAiReview(null);
     setMode("preview");
     setError(null);
+    setAiError(null);
   }
 
   return (
     <main>
       <header className="topbar">
         <div className="brand">
-          <div className="mark" aria-hidden="true">A</div>
+          <div className="mark" aria-hidden="true">
+            A
+          </div>
           <div>
             <strong>ATLAS SAC</strong>
             <span>Risk Intelligence</span>
@@ -140,7 +233,7 @@ export default function HomePage() {
         </div>
         <div className="topbar-meta">
           <StatusPill mode={mode} />
-          <span className="method-tag">methodology v0.2</span>
+          <span className="method-tag">rules · ML · dual-model AI</span>
         </div>
       </header>
 
@@ -149,13 +242,16 @@ export default function HomePage() {
           <span className="kicker">SOCIAL · AMBIENTAL · CLIMÁTICO</span>
           <h1>Risco explicável, antes da narrativa.</h1>
           <p>
-            Uma plataforma experimental que separa risco inerente, sinais observados e incerteza
-            antes de permitir qualquer conclusão automatizada.
+            Uma plataforma experimental que combina regras determinísticas, modelo estatístico e
+            revisão independente por IA sem terceirizar a decisão para um LLM.
           </p>
         </div>
         <div className="hero-note">
           <span>PORTFÓLIO / PESQUISA</span>
-          <p>Dados sintéticos. Não é score de crédito, rating regulatório ou aconselhamento financeiro.</p>
+          <p>
+            Dados sintéticos. Não é score de crédito, rating regulatório ou aconselhamento
+            financeiro.
+          </p>
         </div>
       </section>
 
@@ -166,13 +262,18 @@ export default function HomePage() {
               <span className="eyebrow">COUNTERPARTY LAB</span>
               <h2>Teste o motor</h2>
             </div>
-            <button className="ghost-button" type="button" onClick={resetDemo}>Reset</button>
+            <button className="ghost-button" type="button" onClick={resetDemo}>
+              Reset
+            </button>
           </div>
 
           <form onSubmit={submit}>
             <label className="field-label">
               Empresa sintética
-              <input value={input.company_name} onChange={(e) => updateText("company_name", e.target.value)} />
+              <input
+                value={input.company_name}
+                onChange={(e) => updateText("company_name", e.target.value)}
+              />
             </label>
             <label className="field-label">
               Setor
@@ -208,7 +309,7 @@ export default function HomePage() {
             </div>
 
             <button className="primary-button" type="submit" disabled={loading}>
-              {loading ? "Executando avaliação…" : "Run live assessment"}
+              {loading ? "Executando avaliação…" : "Run rules + ML"}
             </button>
             <p className="endpoint">FastAPI: {apiUrl()}</p>
             {error ? <p className="error-box">{error}. A prévia sintética permanece visível.</p> : null}
@@ -237,9 +338,15 @@ export default function HomePage() {
               </b>
             </div>
 
-            <div className={`review-gate ${assessment.human_review_required ? "required" : "clear"}`}>
+            <div
+              className={`review-gate ${assessment.human_review_required ? "required" : "clear"}`}
+            >
               <span className="eyebrow">DECISION GATE</span>
-              <strong>{assessment.human_review_required ? "HUMAN REVIEW REQUIRED" : "NO MANDATORY REVIEW"}</strong>
+              <strong>
+                {assessment.human_review_required
+                  ? "HUMAN REVIEW REQUIRED"
+                  : "NO MANDATORY REVIEW"}
+              </strong>
               <p>
                 {assessment.human_review_required
                   ? "O motor bloqueia conclusão automática enquanto houver sinais materiais ou incerteza relevante."
@@ -266,10 +373,66 @@ export default function HomePage() {
               <div className="signal-number">{toPercent(assessment.confidence)}</div>
               <ScoreBar
                 score={assessment.confidence}
-                band={assessment.confidence < 0.6 ? "HIGH" : assessment.confidence < 0.8 ? "MEDIUM" : "LOW"}
+                band={
+                  assessment.confidence < 0.6
+                    ? "HIGH"
+                    : assessment.confidence < 0.8
+                      ? "MEDIUM"
+                      : "LOW"
+                }
               />
               <p>Baixa completude não reduz risco. Ela reduz confiança e força revisão.</p>
             </article>
+          </section>
+
+          <section className="model-lab-card">
+            <div className="section-heading-inline">
+              <div>
+                <span className="eyebrow">MODEL LAB</span>
+                <h2>Baseline estatístico transparente</h2>
+              </div>
+              <span className="lab-chip">SYNTHETIC LOGISTIC REGRESSION</span>
+            </div>
+
+            <div className="model-lab-grid">
+              <div className="model-probability">
+                <span className="quiet">Probabilidade experimental de risco material</span>
+                <strong>
+                  {mlPrediction
+                    ? `${toPercent(mlPrediction.predicted_material_risk_probability)}%`
+                    : "Execute o motor"}
+                </strong>
+                <p>
+                  O modelo é um sinal adicional. Ele não substitui regras, evidências ou revisão
+                  humana.
+                </p>
+              </div>
+
+              <div className="metrics-grid">
+                <Metric
+                  label="ROC-AUC holdout"
+                  value={mlEvaluation ? mlEvaluation.roc_auc.toFixed(3) : "—"}
+                />
+                <Metric
+                  label="Precision"
+                  value={mlEvaluation ? mlEvaluation.precision.toFixed(3) : "—"}
+                />
+                <Metric
+                  label="Recall"
+                  value={mlEvaluation ? mlEvaluation.recall.toFixed(3) : "—"}
+                />
+                <Metric
+                  label="Brier score"
+                  value={mlEvaluation ? mlEvaluation.brier_score.toFixed(3) : "—"}
+                />
+              </div>
+            </div>
+
+            <div className="model-footnote">
+              <span>{mlPrediction?.model_version ?? "synthetic-logreg-v1"}</span>
+              <span>{mlPrediction?.dataset_version ?? "atlas-sac-synthetic-v1"}</span>
+              <span>evidence_completeness excluded from ML features</span>
+            </div>
           </section>
 
           <section>
@@ -293,6 +456,130 @@ export default function HomePage() {
             </div>
           </section>
 
+          <section className="ai-lab-card">
+            <div className="section-heading-inline ai-heading">
+              <div>
+                <span className="eyebrow">DUAL-MODEL AI REVIEW</span>
+                <h2>Analista com contraditório independente</h2>
+              </div>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={runDualModelReview}
+                disabled={aiLoading}
+              >
+                {aiLoading ? "Revisando…" : "Run Gemini → Groq review"}
+              </button>
+            </div>
+
+            {aiError ? <p className="error-box">{aiError}</p> : null}
+
+            {!aiReview ? (
+              <div className="ai-empty-state">
+                <div className="ai-step">
+                  <span>01</span>
+                  <strong>Gemini analyst</strong>
+                  <p>Interpreta apenas evidências enumeradas, regras e o sinal ML sintético.</p>
+                </div>
+                <div className="ai-step">
+                  <span>02</span>
+                  <strong>Evidence grounding</strong>
+                  <p>Cada finding precisa citar uma referência permitida. Referência inventada invalida a saída.</p>
+                </div>
+                <div className="ai-step">
+                  <span>03</span>
+                  <strong>Groq reviewer</strong>
+                  <p>Procura inferências sem suporte, contradições e confusão entre risco inerente e observado.</p>
+                </div>
+                <div className="ai-step emphasis">
+                  <span>04</span>
+                  <strong>Decision gate</strong>
+                  <p>Discordância pode aumentar a exigência de revisão humana, nunca reduzi-la.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="ai-result-grid">
+                <article className="ai-agent-card analyst-card">
+                  <div className="agent-head">
+                    <div>
+                      <span className="eyebrow">ANALYST</span>
+                      <h3>Gemini</h3>
+                    </div>
+                    <span className={`ai-status ${aiReview.status.toLowerCase()}`}>
+                      {aiReview.status}
+                    </span>
+                  </div>
+                  {aiReview.analyst ? (
+                    <>
+                      <p className="agent-summary">{aiReview.analyst.summary}</p>
+                      <div className="finding-list">
+                        {aiReview.analyst.findings.slice(0, 3).map((finding, index) => (
+                          <div className="finding" key={`${finding.finding}-${index}`}>
+                            <strong>{finding.finding}</strong>
+                            <span>
+                              {finding.confidence} · {finding.evidence_refs.join(", ")}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="agent-summary">
+                      Saída de IA indisponível. O motor continuou no caminho determinístico.
+                    </p>
+                  )}
+                </article>
+
+                <article className="ai-agent-card reviewer-card">
+                  <div className="agent-head">
+                    <div>
+                      <span className="eyebrow">INDEPENDENT REVIEWER</span>
+                      <h3>Groq</h3>
+                    </div>
+                    <span className={`review-verdict ${aiReview.reviewer?.verdict.toLowerCase() ?? "none"}`}>
+                      {aiReview.reviewer?.verdict ?? "NO OUTPUT"}
+                    </span>
+                  </div>
+                  <p className="agent-summary">
+                    {aiReview.reviewer?.rationale ?? aiReview.degradation_reason ?? "Sem revisão disponível."}
+                  </p>
+                  {aiReview.reviewer?.unsupported_claims.length ? (
+                    <div className="challenge-box">
+                      <span>CHALLENGED CLAIMS</span>
+                      <ul>
+                        {aiReview.reviewer.unsupported_claims.map((claim) => (
+                          <li key={claim}>{claim}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </article>
+
+                <article className={`ai-gate-card ${aiReview.decision_gate === "HUMAN_REVIEW_REQUIRED" ? "required" : "clear"}`}>
+                  <span className="eyebrow">AI DECISION GATE</span>
+                  <strong>{aiReview.decision_gate.replaceAll("_", " ")}</strong>
+                  <p>
+                    {aiReview.disagreement
+                      ? "Os modelos discordaram. A conclusão automatizada permanece bloqueada para revisão humana."
+                      : "Nenhuma discordância material registrada nesta execução de IA."}
+                  </p>
+                  <div className="provider-traces">
+                    {aiReview.provider_runs.map((run) => (
+                      <span key={`${run.provider}-${run.role}`}>
+                        {run.role} · {run.model} · {run.latency_ms}ms · {run.prompt_version}
+                      </span>
+                    ))}
+                  </div>
+                </article>
+              </div>
+            )}
+
+            <p className="ai-disclaimer">
+              Evidências são tratadas como dados não confiáveis. LLMs não podem alterar o score
+              determinístico nem a probabilidade do baseline sintético.
+            </p>
+          </section>
+
           <section className="trace-card">
             <div className="section-heading-inline">
               <div>
@@ -311,20 +598,22 @@ export default function HomePage() {
               <div className="trace-arrow">→</div>
               <div className="trace-node">
                 <span>02</span>
-                <strong>Rules</strong>
-                <p>Inerente e observado permanecem separados.</p>
+                <strong>Rules + ML</strong>
+                <p>O score determinístico e o baseline permanecem independentes.</p>
               </div>
               <div className="trace-arrow">→</div>
               <div className="trace-node">
                 <span>03</span>
-                <strong>Uncertainty</strong>
-                <p>Completude: {toPercent(assessment.confidence)}%.</p>
+                <strong>Uncertainty + AI</strong>
+                <p>Completude: {toPercent(assessment.confidence)}%. IA só adiciona interpretação e crítica.</p>
               </div>
               <div className="trace-arrow">→</div>
               <div className="trace-node emphasis">
                 <span>04</span>
                 <strong>{assessment.human_review_required ? "Human review" : "Result"}</strong>
-                <p>{bandLabel[assessment.overall_band]} · {toPercent(assessment.overall_score)}/100</p>
+                <p>
+                  {bandLabel[assessment.overall_band]} · {toPercent(assessment.overall_score)}/100
+                </p>
               </div>
             </div>
 
@@ -353,7 +642,7 @@ export default function HomePage() {
           <strong>ATLAS SAC</strong>
           <p>Independent engineering portfolio project.</p>
         </div>
-        <p>AI will be added as an assistive reviewer, never as the source of truth.</p>
+        <p>Rules decide scores. ML adds a signal. AI explains and challenges. Humans retain ownership.</p>
       </footer>
     </main>
   );
