@@ -3,8 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ATLAS SAC | Inteligência de Risco",
-  description:
-    "Análise social, ambiental e climática orientada por evidências, com incerteza explícita e decisão humana por design.",
+  description: "Risco social, ambiental e climático orientado por evidências, incerteza explícita e decisão humana.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
