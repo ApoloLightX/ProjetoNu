@@ -6,7 +6,6 @@ from app.company_registry import (
     normalize_cnpj,
 )
 
-
 FIXTURE = {
     "cnpj": "19131243000197",
     "razao_social": "EMPRESA DEMONSTRACAO LTDA",
