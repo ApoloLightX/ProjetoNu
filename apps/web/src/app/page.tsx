@@ -40,12 +40,12 @@ const sliderFields: Array<{
   {
     key: "climate_physical_exposure",
     label: "Exposição climática física",
-    hint: "Exposição sintética a eventos físicos e extremos.",
+    hint: "Exposição a eventos físicos e extremos.",
   },
   {
     key: "climate_transition_exposure",
     label: "Exposição climática de transição",
-    hint: "Pressões de transição regulatória, tecnológica ou econômica.",
+    hint: "Pressões regulatórias, tecnológicas ou econômicas.",
   },
   {
     key: "social_signal_strength",
@@ -59,7 +59,7 @@ const sliderFields: Array<{
   },
   {
     key: "reputational_signal_strength",
-    label: "Sinais reputacionais / contexto",
+    label: "Sinais reputacionais",
     hint: "Sinais externos que exigem análise contextual.",
   },
   {
@@ -69,24 +69,32 @@ const sliderFields: Array<{
   },
 ];
 
-function ScoreBar({ score, band }: { score: number; band: RiskBand }) {
+function RiskBar({ score, band }: { score: number; band: RiskBand }) {
   return (
-    <div className="score-track" aria-label={`${toPercent(score)}%`}>
+    <div className="risk-bar" aria-label={`${toPercent(score)}%`}>
       <span
-        className={`score-fill band-${band.toLowerCase()}`}
+        className={`risk-bar-fill risk-${band.toLowerCase()}`}
         style={{ width: `${toPercent(score)}%` }}
       />
     </div>
   );
 }
 
-function StatusPill({ mode }: { mode: AssessmentMode }) {
-  if (mode === "live") return <span className="status-pill live">LIVE ENGINE</span>;
-  if (mode === "error") return <span className="status-pill error">API OFFLINE</span>;
-  return <span className="status-pill preview">SYNTHETIC PREVIEW</span>;
+function EngineStatus({ mode }: { mode: AssessmentMode }) {
+  const label = mode === "live" ? "Live" : mode === "error" ? "Offline" : "Preview";
+  return <span className={`engine-status engine-${mode}`}>{label}</span>;
 }
 
-function DimensionCard({
+function MethodMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="method-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function RiskFactorRow({
   label,
   score,
   band,
@@ -98,29 +106,16 @@ function DimensionCard({
   drivers: string[];
 }) {
   return (
-    <article className="dimension-card">
-      <div className="dimension-head">
-        <div>
-          <span className="eyebrow">DIMENSÃO</span>
-          <h3>{label}</h3>
-        </div>
-        <strong className={`band-text band-${band.toLowerCase()}`}>{bandLabel[band]}</strong>
+    <div className="risk-factor-row">
+      <div className="risk-factor-label">
+        <strong>{label}</strong>
+        <span>{drivers.slice(0, 2).join(" · ") || "Sem driver material nesta execução."}</span>
       </div>
-      <div className="dimension-score">
+      <div className="risk-factor-score">
         <span>{toPercent(score)}</span>
-        <small>/100</small>
+        <small className={`risk-text risk-${band.toLowerCase()}`}>{bandLabel[band]}</small>
       </div>
-      <ScoreBar score={score} band={band} />
-      <p>{drivers.join(" · ")}</p>
-    </article>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric-cell">
-      <span>{label}</span>
-      <strong>{value}</strong>
+      <RiskBar score={score} band={band} />
     </div>
   );
 }
@@ -138,6 +133,44 @@ export default function HomePage() {
   const [aiError, setAiError] = useState<string | null>(null);
 
   const dimensions = useMemo(() => dimensionsOf(assessment), [assessment]);
+  const climateScore = useMemo(
+    () => (assessment.climate_physical_risk.score + assessment.climate_transition_risk.score) / 2,
+    [assessment],
+  );
+
+  const evidenceRows = useMemo(
+    () => [
+      {
+        source: "Synthetic profile",
+        signal: "Sector environmental exposure",
+        value: `${toPercent(input.sector_environmental_exposure)}%`,
+        confidence: "Context",
+        status: "Context",
+      },
+      {
+        source: "Synthetic profile",
+        signal: "Geographic environmental exposure",
+        value: `${toPercent(input.geographic_environmental_exposure)}%`,
+        confidence: "Context",
+        status: "Context",
+      },
+      {
+        source: "Synthetic signals",
+        signal: "Observed environmental event strength",
+        value: `${toPercent(input.environmental_event_strength)}%`,
+        confidence: input.environmental_event_strength > 0.6 ? "High" : "Medium",
+        status: "Observed",
+      },
+      {
+        source: "Evidence gate",
+        signal: "Evidence completeness",
+        value: `${toPercent(input.evidence_completeness)}%`,
+        confidence: input.evidence_completeness >= 0.8 ? "High" : "Limited",
+        status: input.evidence_completeness >= 0.8 ? "Ready" : "Review",
+      },
+    ],
+    [input],
+  );
 
   useEffect(() => {
     let active = true;
@@ -167,6 +200,7 @@ export default function HomePage() {
     setError(null);
     setAiReview(null);
     setAiError(null);
+
     try {
       const [riskResult, modelResult] = await Promise.all([
         runAssessment(input),
@@ -186,6 +220,7 @@ export default function HomePage() {
   async function runDualModelReview() {
     setAiLoading(true);
     setAiError(null);
+
     const evidence: EvidenceInput[] = [
       {
         evidence_type: "synthetic_demo_context",
@@ -203,7 +238,7 @@ export default function HomePage() {
       setAiReview(await runAiAssessment(input, evidence));
     } catch (err) {
       setAiReview(null);
-      setAiError(err instanceof Error ? err.message : "A revisão de IA não pôde ser executada.");
+      setAiError(err instanceof Error ? err.message : "A revisão independente não pôde ser executada.");
     } finally {
       setAiLoading(false);
     }
@@ -220,349 +255,335 @@ export default function HomePage() {
   }
 
   return (
-    <main>
+    <main className="app-shell">
       <header className="topbar">
-        <div className="brand">
-          <div className="mark" aria-hidden="true">
-            A
-          </div>
-          <div>
-            <strong>ATLAS SAC</strong>
-            <span>Risk Intelligence</span>
-          </div>
+        <div className="topbar-brand">
+          <strong>ATLAS</strong>
+          <span>SAC Risk Intelligence</span>
         </div>
-        <div className="topbar-meta">
-          <StatusPill mode={mode} />
-          <span className="method-tag">rules · ML · dual-model AI</span>
+        <div className="topbar-actions">
+          <EngineStatus mode={mode} />
+          <span className="topbar-method">Rules · ML · independent review</span>
         </div>
       </header>
 
-      <section className="hero shell">
-        <div className="hero-copy">
-          <span className="kicker">SOCIAL · AMBIENTAL · CLIMÁTICO</span>
-          <h1>Risco explicável, antes da narrativa.</h1>
-          <p>
-            Uma plataforma experimental que combina regras determinísticas, modelo estatístico e
-            revisão independente por IA sem terceirizar a decisão para um LLM.
-          </p>
+      <aside className="sidebar" aria-label="Navegação principal">
+        <div className="sidebar-group">
+          <span className="sidebar-label">Workspace</span>
+          <a className="sidebar-link active" href="#overview">Overview</a>
+          <a className="sidebar-link" href="#evidence">Evidence</a>
+          <a className="sidebar-link" href="#risk-factors">Risk factors</a>
+          <a className="sidebar-link" href="#methodology">Methodology</a>
+          <a className="sidebar-link" href="#review">Review queue</a>
         </div>
-        <div className="hero-note">
-          <span>PORTFÓLIO / PESQUISA</span>
-          <p>
-            Dados sintéticos. Não é score de crédito, rating regulatório ou aconselhamento
-            financeiro.
-          </p>
-        </div>
-      </section>
 
-      <section className="workspace shell">
-        <aside className="control-panel">
-          <div className="section-title">
-            <div>
-              <span className="eyebrow">COUNTERPARTY LAB</span>
-              <h2>Teste o motor</h2>
-            </div>
-            <button className="ghost-button" type="button" onClick={resetDemo}>
-              Reset
-            </button>
+        <div className="sidebar-group sidebar-system">
+          <span className="sidebar-label">System</span>
+          <span className="system-item">Rules engine</span>
+          <span className="system-item">ML baseline</span>
+          <span className="system-item">AI review</span>
+          <span className="system-endpoint">{apiUrl()}</span>
+        </div>
+      </aside>
+
+      <div className="content">
+        <section className="search-section" id="overview">
+          <div className="section-intro">
+            <span>Counterparty assessment</span>
+            <h1>Evaluate a company</h1>
+            <p>
+              Evidence-first social, environmental and climate risk analysis with explicit
+              uncertainty and human ownership.
+            </p>
           </div>
 
-          <form onSubmit={submit}>
-            <label className="field-label">
-              Empresa sintética
+          <form className="counterparty-form" onSubmit={submit}>
+            <div className="search-row">
               <input
+                aria-label="Empresa ou contraparte"
+                className="company-search"
                 value={input.company_name}
-                onChange={(e) => updateText("company_name", e.target.value)}
+                onChange={(event) => updateText("company_name", event.target.value)}
               />
-            </label>
-            <label className="field-label">
-              Setor
-              <input value={input.sector} onChange={(e) => updateText("sector", e.target.value)} />
-            </label>
-            <label className="field-label">
-              Região
-              <input value={input.region} onChange={(e) => updateText("region", e.target.value)} />
-            </label>
-
-            <div className="sliders">
-              {sliderFields.map((field) => {
-                const value = input[field.key] as number;
-                return (
-                  <label className="slider-row" key={field.key}>
-                    <div className="slider-copy">
-                      <span>{field.label}</span>
-                      <strong>{toPercent(value)}</strong>
-                    </div>
-                    <input
-                      aria-label={field.label}
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={value}
-                      onChange={(e) => updateNumber(field.key, e.target.value)}
-                    />
-                    <small>{field.hint}</small>
-                  </label>
-                );
-              })}
-            </div>
-
-            <button className="primary-button" type="submit" disabled={loading}>
-              {loading ? "Executando avaliação…" : "Run rules + ML"}
-            </button>
-            <p className="endpoint">FastAPI: {apiUrl()}</p>
-            {error ? <p className="error-box">{error}. A prévia sintética permanece visível.</p> : null}
-          </form>
-        </aside>
-
-        <div className="dashboard">
-          <section className="summary-card">
-            <div className="summary-main">
-              <span className="eyebrow">SAC RISK PROFILE</span>
-              <h2>{assessment.company_name}</h2>
-              <div className="entity-meta">
-                <span>{input.sector}</span>
-                <span>{input.region}</span>
-              </div>
-            </div>
-
-            <div className="overall-score">
-              <span className="eyebrow">RISCO CONSOLIDADO</span>
-              <div className="score-line">
-                <strong>{toPercent(assessment.overall_score)}</strong>
-                <span>/100</span>
-              </div>
-              <b className={`band-text band-${assessment.overall_band.toLowerCase()}`}>
-                {bandLabel[assessment.overall_band]}
-              </b>
-            </div>
-
-            <div
-              className={`review-gate ${assessment.human_review_required ? "required" : "clear"}`}
-            >
-              <span className="eyebrow">DECISION GATE</span>
-              <strong>
-                {assessment.human_review_required
-                  ? "HUMAN REVIEW REQUIRED"
-                  : "NO MANDATORY REVIEW"}
-              </strong>
-              <p>
-                {assessment.human_review_required
-                  ? "O motor bloqueia conclusão automática enquanto houver sinais materiais ou incerteza relevante."
-                  : "Nenhum gatilho de revisão obrigatória foi acionado nesta avaliação experimental."}
-              </p>
-            </div>
-          </section>
-
-          <section className="signal-grid">
-            <article className="signal-card">
-              <span className="eyebrow">RISCO INERENTE</span>
-              <div className="signal-number">{toPercent(assessment.inherent_risk.score)}</div>
-              <ScoreBar score={assessment.inherent_risk.score} band={assessment.inherent_risk.band} />
-              <p>Exposição de setor, geografia e clima. Não representa conduta da empresa.</p>
-            </article>
-            <article className="signal-card">
-              <span className="eyebrow">RISCO OBSERVADO</span>
-              <div className="signal-number">{toPercent(assessment.observed_risk.score)}</div>
-              <ScoreBar score={assessment.observed_risk.score} band={assessment.observed_risk.band} />
-              <p>Sinais específicos da contraparte, modelados separadamente do risco inerente.</p>
-            </article>
-            <article className="signal-card confidence-card">
-              <span className="eyebrow">CONFIANÇA / EVIDÊNCIA</span>
-              <div className="signal-number">{toPercent(assessment.confidence)}</div>
-              <ScoreBar
-                score={assessment.confidence}
-                band={
-                  assessment.confidence < 0.6
-                    ? "HIGH"
-                    : assessment.confidence < 0.8
-                      ? "MEDIUM"
-                      : "LOW"
-                }
-              />
-              <p>Baixa completude não reduz risco. Ela reduz confiança e força revisão.</p>
-            </article>
-          </section>
-
-          <section className="model-lab-card">
-            <div className="section-heading-inline">
-              <div>
-                <span className="eyebrow">MODEL LAB</span>
-                <h2>Baseline estatístico transparente</h2>
-              </div>
-              <span className="lab-chip">SYNTHETIC LOGISTIC REGRESSION</span>
-            </div>
-
-            <div className="model-lab-grid">
-              <div className="model-probability">
-                <span className="quiet">Probabilidade experimental de risco material</span>
-                <strong>
-                  {mlPrediction
-                    ? `${toPercent(mlPrediction.predicted_material_risk_probability)}%`
-                    : "Execute o motor"}
-                </strong>
-                <p>
-                  O modelo é um sinal adicional. Ele não substitui regras, evidências ou revisão
-                  humana.
-                </p>
-              </div>
-
-              <div className="metrics-grid">
-                <Metric
-                  label="ROC-AUC holdout"
-                  value={mlEvaluation ? mlEvaluation.roc_auc.toFixed(3) : "—"}
-                />
-                <Metric
-                  label="Precision"
-                  value={mlEvaluation ? mlEvaluation.precision.toFixed(3) : "—"}
-                />
-                <Metric
-                  label="Recall"
-                  value={mlEvaluation ? mlEvaluation.recall.toFixed(3) : "—"}
-                />
-                <Metric
-                  label="Brier score"
-                  value={mlEvaluation ? mlEvaluation.brier_score.toFixed(3) : "—"}
-                />
-              </div>
-            </div>
-
-            <div className="model-footnote">
-              <span>{mlPrediction?.model_version ?? "synthetic-logreg-v1"}</span>
-              <span>{mlPrediction?.dataset_version ?? "atlas-sac-synthetic-v1"}</span>
-              <span>evidence_completeness excluded from ML features</span>
-            </div>
-          </section>
-
-          <section>
-            <div className="section-heading-inline">
-              <div>
-                <span className="eyebrow">RISK DOMAINS</span>
-                <h2>Dimensões materiais</h2>
-              </div>
-              <span className="quiet">Scores heurísticos, 0–100</span>
-            </div>
-            <div className="dimension-grid">
-              {dimensions.map(({ key, label, dimension }) => (
-                <DimensionCard
-                  key={key}
-                  label={label}
-                  score={dimension.score}
-                  band={dimension.band}
-                  drivers={dimension.drivers}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section className="ai-lab-card">
-            <div className="section-heading-inline ai-heading">
-              <div>
-                <span className="eyebrow">DUAL-MODEL AI REVIEW</span>
-                <h2>Analista com contraditório independente</h2>
-              </div>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={runDualModelReview}
-                disabled={aiLoading}
-              >
-                {aiLoading ? "Revisando…" : "Run Gemini → Groq review"}
+              <button className="button button-primary" type="submit" disabled={loading}>
+                {loading ? "Evaluating…" : "Evaluate"}
               </button>
             </div>
 
-            {aiError ? <p className="error-box">{aiError}</p> : null}
+            <div className="entity-fields">
+              <label>
+                <span>Sector</span>
+                <input value={input.sector} onChange={(event) => updateText("sector", event.target.value)} />
+              </label>
+              <label>
+                <span>Region</span>
+                <input value={input.region} onChange={(event) => updateText("region", event.target.value)} />
+              </label>
+              <button className="button button-ghost" type="button" onClick={resetDemo}>
+                Reset demo
+              </button>
+            </div>
 
-            {!aiReview ? (
-              <div className="ai-empty-state">
-                <div className="ai-step">
+            <details className="parameter-drawer">
+              <summary>Assessment parameters</summary>
+              <div className="parameter-grid">
+                {sliderFields.map((field) => {
+                  const value = input[field.key] as number;
+                  return (
+                    <label className="parameter-field" key={field.key}>
+                      <div>
+                        <span>{field.label}</span>
+                        <strong>{toPercent(value)}</strong>
+                      </div>
+                      <input
+                        aria-label={field.label}
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={value}
+                        onChange={(event) => updateNumber(field.key, event.target.value)}
+                      />
+                      <small>{field.hint}</small>
+                    </label>
+                  );
+                })}
+              </div>
+            </details>
+          </form>
+
+          {error ? (
+            <div className="inline-alert inline-alert-error">
+              <strong>Risk engine unavailable.</strong>
+              <span>{error}. The synthetic preview remains visible.</span>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="entity-header">
+          <div>
+            <h2>{assessment.company_name}</h2>
+            <p>{input.region} · {input.sector}</p>
+          </div>
+          <div className="entity-badges">
+            <span>Synthetic profile</span>
+            <span>Experimental methodology</span>
+          </div>
+        </section>
+
+        <section className="risk-overview panel">
+          <div className="risk-score-block">
+            <span className="panel-label">SAC risk</span>
+            <div className="primary-score">
+              <strong>{toPercent(assessment.overall_score)}</strong>
+              <span className={`risk-text risk-${assessment.overall_band.toLowerCase()}`}>
+                {bandLabel[assessment.overall_band]}
+              </span>
+            </div>
+            <RiskBar score={assessment.overall_score} band={assessment.overall_band} />
+          </div>
+
+          <div className="decision-block">
+            <span className="panel-label">Decision</span>
+            <strong>
+              {assessment.human_review_required ? "Human review required" : "No mandatory review"}
+            </strong>
+            <p>
+              {assessment.human_review_required
+                ? "Material signals or insufficient evidence prevent automatic closure."
+                : "No mandatory review trigger was activated in this experimental run."}
+            </p>
+            <a className="button button-review" href="#review">
+              {assessment.human_review_required ? "Open review" : "View decision"}
+            </a>
+          </div>
+
+          <div className="dimension-summary">
+            <div>
+              <span>Environmental</span>
+              <strong>{toPercent(assessment.environmental_risk.score)}</strong>
+            </div>
+            <div>
+              <span>Social</span>
+              <strong>{toPercent(assessment.social_risk.score)}</strong>
+            </div>
+            <div>
+              <span>Climate</span>
+              <strong>{toPercent(climateScore)}</strong>
+            </div>
+            <div>
+              <span>Confidence</span>
+              <strong>{toPercent(assessment.confidence)}%</strong>
+            </div>
+            <div>
+              <span>Observed risk</span>
+              <strong>{toPercent(assessment.observed_risk.score)}</strong>
+            </div>
+            <div>
+              <span>Model signal</span>
+              <strong>
+                {mlPrediction ? `${toPercent(mlPrediction.predicted_material_risk_probability)}%` : "—"}
+              </strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="section-block" id="evidence">
+          <div className="section-heading">
+            <div>
+              <h2>Evidence</h2>
+              <p>What supports this assessment and what remains uncertain.</p>
+            </div>
+            <span className="section-note">Synthetic signals until public-data integration is merged</span>
+          </div>
+
+          <div className="table-panel panel">
+            <div className="data-table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th>Signal</th>
+                    <th>Value</th>
+                    <th>Confidence</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {evidenceRows.map((row) => (
+                    <tr key={`${row.source}-${row.signal}`}>
+                      <td>{row.source}</td>
+                      <td>{row.signal}</td>
+                      <td>{row.value}</td>
+                      <td>{row.confidence}</td>
+                      <td>
+                        <span className={`table-status status-${row.status.toLowerCase()}`}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section className="section-block" id="risk-factors">
+          <div className="section-heading">
+            <div>
+              <h2>Risk factors</h2>
+              <p>Material dimensions remain separate instead of collapsing into one opaque score.</p>
+            </div>
+            <span className="section-note">0–100 heuristic scale</span>
+          </div>
+
+          <div className="risk-factor-panel panel">
+            {dimensions.map(({ key, label, dimension }) => (
+              <RiskFactorRow
+                key={key}
+                label={label}
+                score={dimension.score}
+                band={dimension.band}
+                drivers={dimension.drivers}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="section-block" id="methodology">
+          <div className="section-heading">
+            <div>
+              <h2>Methodology</h2>
+              <p>Separate layers make the system easier to challenge, reproduce and audit.</p>
+            </div>
+          </div>
+
+          <div className="methodology-grid">
+            <article className="panel method-panel">
+              <div className="method-steps">
+                <div>
                   <span>01</span>
-                  <strong>Gemini analyst</strong>
-                  <p>Interpreta apenas evidências enumeradas, regras e o sinal ML sintético.</p>
+                  <strong>Rules</strong>
+                  <p>Deterministic score and review triggers.</p>
                 </div>
-                <div className="ai-step">
+                <div>
                   <span>02</span>
-                  <strong>Evidence grounding</strong>
-                  <p>Cada finding precisa citar uma referência permitida. Referência inventada invalida a saída.</p>
+                  <strong>ML baseline</strong>
+                  <p>A second statistical signal trained on synthetic data.</p>
                 </div>
-                <div className="ai-step">
+                <div>
                   <span>03</span>
-                  <strong>Groq reviewer</strong>
-                  <p>Procura inferências sem suporte, contradições e confusão entre risco inerente e observado.</p>
+                  <strong>Independent review</strong>
+                  <p>Gemini proposes interpretation; Groq challenges unsupported claims.</p>
                 </div>
-                <div className="ai-step emphasis">
+                <div>
                   <span>04</span>
-                  <strong>Decision gate</strong>
-                  <p>Discordância pode aumentar a exigência de revisão humana, nunca reduzi-la.</p>
+                  <strong>Human gate</strong>
+                  <p>AI cannot remove a deterministic review requirement.</p>
                 </div>
               </div>
-            ) : (
-              <div className="ai-result-grid">
-                <article className="ai-agent-card analyst-card">
-                  <div className="agent-head">
-                    <div>
-                      <span className="eyebrow">ANALYST</span>
-                      <h3>Gemini</h3>
-                    </div>
-                    <span className={`ai-status ${aiReview.status.toLowerCase()}`}>
-                      {aiReview.status}
-                    </span>
-                  </div>
-                  {aiReview.analyst ? (
-                    <>
-                      <p className="agent-summary">{aiReview.analyst.summary}</p>
-                      <div className="finding-list">
-                        {aiReview.analyst.findings.slice(0, 3).map((finding, index) => (
-                          <div className="finding" key={`${finding.finding}-${index}`}>
-                            <strong>{finding.finding}</strong>
-                            <span>
-                              {finding.confidence} · {finding.evidence_refs.join(", ")}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <p className="agent-summary">
-                      Saída de IA indisponível. O motor continuou no caminho determinístico.
-                    </p>
-                  )}
-                </article>
 
-                <article className="ai-agent-card reviewer-card">
-                  <div className="agent-head">
-                    <div>
-                      <span className="eyebrow">INDEPENDENT REVIEWER</span>
-                      <h3>Groq</h3>
-                    </div>
-                    <span className={`review-verdict ${aiReview.reviewer?.verdict.toLowerCase() ?? "none"}`}>
-                      {aiReview.reviewer?.verdict ?? "NO OUTPUT"}
-                    </span>
-                  </div>
-                  <p className="agent-summary">
-                    {aiReview.reviewer?.rationale ?? aiReview.degradation_reason ?? "Sem revisão disponível."}
-                  </p>
-                  {aiReview.reviewer?.unsupported_claims.length ? (
-                    <div className="challenge-box">
-                      <span>CHALLENGED CLAIMS</span>
-                      <ul>
-                        {aiReview.reviewer.unsupported_claims.map((claim) => (
-                          <li key={claim}>{claim}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </article>
+              <div className="model-metrics">
+                <MethodMetric label="ROC-AUC" value={mlEvaluation ? mlEvaluation.roc_auc.toFixed(3) : "—"} />
+                <MethodMetric label="Precision" value={mlEvaluation ? mlEvaluation.precision.toFixed(3) : "—"} />
+                <MethodMetric label="Recall" value={mlEvaluation ? mlEvaluation.recall.toFixed(3) : "—"} />
+                <MethodMetric label="Brier score" value={mlEvaluation ? mlEvaluation.brier_score.toFixed(3) : "—"} />
+              </div>
 
-                <article className={`ai-gate-card ${aiReview.decision_gate === "HUMAN_REVIEW_REQUIRED" ? "required" : "clear"}`}>
-                  <span className="eyebrow">AI DECISION GATE</span>
-                  <strong>{aiReview.decision_gate.replaceAll("_", " ")}</strong>
+              <div className="method-footnote">
+                <span>{mlPrediction?.model_version ?? "synthetic-logreg-v1"}</span>
+                <span>{mlPrediction?.dataset_version ?? "atlas-sac-synthetic-v1"}</span>
+                <span>Evidence completeness excluded from ML features</span>
+              </div>
+            </article>
+
+            <article className="panel review-method-panel">
+              <div className="review-method-head">
+                <div>
+                  <span className="panel-label">Independent model review</span>
+                  <h3>Interpretation with challenge</h3>
+                </div>
+                <button
+                  className="button button-secondary"
+                  type="button"
+                  onClick={runDualModelReview}
+                  disabled={aiLoading}
+                >
+                  {aiLoading ? "Reviewing…" : "Run review"}
+                </button>
+              </div>
+
+              {aiError ? <div className="inline-alert inline-alert-error">{aiError}</div> : null}
+
+              {!aiReview ? (
+                <div className="review-empty">
                   <p>
-                    {aiReview.disagreement
-                      ? "Os modelos discordaram. A conclusão automatizada permanece bloqueada para revisão humana."
-                      : "Nenhuma discordância material registrada nesta execução de IA."}
+                    The LLM layer is intentionally downstream from rules and ML. It can explain,
+                    challenge and request more information, but it cannot rewrite deterministic
+                    scores.
                   </p>
+                </div>
+              ) : (
+                <div className="review-result">
+                  <div className="review-row">
+                    <span>Analyst</span>
+                    <strong>{aiReview.analyst?.summary ?? "Unavailable"}</strong>
+                  </div>
+                  <div className="review-row">
+                    <span>Reviewer</span>
+                    <strong>{aiReview.reviewer?.verdict ?? "NO OUTPUT"}</strong>
+                    <p>{aiReview.reviewer?.rationale ?? aiReview.degradation_reason}</p>
+                  </div>
+                  <div className="review-row review-gate-row">
+                    <span>Decision gate</span>
+                    <strong>{aiReview.decision_gate.replaceAll("_", " ")}</strong>
+                    <p>
+                      {aiReview.disagreement
+                        ? "Model disagreement detected. Human review remains mandatory."
+                        : "No material model disagreement detected in this run."}
+                    </p>
+                  </div>
                   <div className="provider-traces">
                     {aiReview.provider_runs.map((run) => (
                       <span key={`${run.provider}-${run.role}`}>
@@ -570,80 +591,44 @@ export default function HomePage() {
                       </span>
                     ))}
                   </div>
-                </article>
-              </div>
-            )}
+                </div>
+              )}
+            </article>
+          </div>
+        </section>
 
-            <p className="ai-disclaimer">
-              Evidências são tratadas como dados não confiáveis. LLMs não podem alterar o score
-              determinístico nem a probabilidade do baseline sintético.
-            </p>
-          </section>
-
-          <section className="trace-card">
-            <div className="section-heading-inline">
-              <div>
-                <span className="eyebrow">DECISION TRACE</span>
-                <h2>Da evidência até a revisão</h2>
-              </div>
-              <span className="quiet">Explainability first</span>
+        <section className="section-block" id="review">
+          <div className="section-heading">
+            <div>
+              <h2>Review queue</h2>
+              <p>Why this assessment needs a person, or why it can move forward.</p>
             </div>
+          </div>
 
-            <div className="trace-flow">
-              <div className="trace-node">
-                <span>01</span>
-                <strong>Inputs</strong>
-                <p>Setor, região e sinais sintéticos normalizados.</p>
-              </div>
-              <div className="trace-arrow">→</div>
-              <div className="trace-node">
-                <span>02</span>
-                <strong>Rules + ML</strong>
-                <p>O score determinístico e o baseline permanecem independentes.</p>
-              </div>
-              <div className="trace-arrow">→</div>
-              <div className="trace-node">
-                <span>03</span>
-                <strong>Uncertainty + AI</strong>
-                <p>Completude: {toPercent(assessment.confidence)}%. IA só adiciona interpretação e crítica.</p>
-              </div>
-              <div className="trace-arrow">→</div>
-              <div className="trace-node emphasis">
-                <span>04</span>
-                <strong>{assessment.human_review_required ? "Human review" : "Result"}</strong>
-                <p>
-                  {bandLabel[assessment.overall_band]} · {toPercent(assessment.overall_score)}/100
-                </p>
-              </div>
+          <div className={`review-panel panel ${assessment.human_review_required ? "review-required" : "review-clear"}`}>
+            <div>
+              <span className="panel-label">Decision state</span>
+              <h3>{assessment.human_review_required ? "Human review required" : "No mandatory review"}</h3>
+              <p>{assessment.methodology}</p>
             </div>
-
-            <div className="trace-detail">
-              <div>
-                <span className="eyebrow">TRIGGERS</span>
-                <ul>
-                  {assessment.review_reasons.length ? (
-                    assessment.review_reasons.map((reason) => <li key={reason}>{reason}</li>)
-                  ) : (
-                    <li>Nenhum gatilho obrigatório nesta execução.</li>
-                  )}
-                </ul>
-              </div>
-              <div>
-                <span className="eyebrow">METHODOLOGY</span>
-                <p>{assessment.methodology}</p>
-              </div>
+            <div className="review-reasons">
+              <span className="panel-label">Triggers</span>
+              <ul>
+                {assessment.review_reasons.length ? (
+                  assessment.review_reasons.map((reason) => <li key={reason}>{reason}</li>)
+                ) : (
+                  <li>No mandatory trigger in this execution.</li>
+                )}
+              </ul>
             </div>
-          </section>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      <footer className="footer shell">
-        <div>
+        <footer className="footer">
           <strong>ATLAS SAC</strong>
-          <p>Independent engineering portfolio project.</p>
-        </div>
-        <p>Rules decide scores. ML adds a signal. AI explains and challenges. Humans retain ownership.</p>
-      </footer>
+          <span>Independent engineering portfolio project · Synthetic methodology demo</span>
+        </footer>
+      </div>
     </main>
   );
 }
