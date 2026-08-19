@@ -89,13 +89,13 @@
 }
 
 .registry-status {
-  color: var(--moss);
-  background: var(--moss-bg);
+  color: var(--slate);
+  background: var(--slate-bg);
 }
 
 .registry-context-badge {
   color: var(--slate);
-  background: var(--slate-bg);
+  background: transparent;
 }
 
 .registry-grid {
@@ -222,6 +222,39 @@
   color: var(--faint);
   font-size: 0.68rem;
   line-height: 1.5;
+}
+
+.simulation-disclaimer {
+  max-width: none;
+  margin-top: 14px;
+  color: var(--sand);
+  background: var(--sand-bg);
+  border-color: rgba(201, 185, 141, 0.26);
+}
+
+.simulation-disclaimer span {
+  color: var(--muted);
+}
+
+.registry-next-step {
+  margin-top: 28px;
+  padding: 24px;
+  border-color: rgba(140, 154, 164, 0.24);
+}
+
+.registry-next-step h2 {
+  margin: 8px 0 8px;
+  font-size: 1.25rem;
+  font-weight: 640;
+  letter-spacing: -0.025em;
+}
+
+.registry-next-step p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.6;
 }
 
 @media (max-width: 820px) {
