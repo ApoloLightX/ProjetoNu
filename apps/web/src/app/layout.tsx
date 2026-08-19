@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "./labs.css";
+import "./refinements.css";
 
 export const metadata: Metadata = {
-  title: "ATLAS SAC | Risk Intelligence",
+  title: "ATLAS SAC | Inteligência de Risco",
   description:
-    "Explainable social, environmental and climate risk intelligence for synthetic corporate counterparties.",
+    "Risco social, ambiental e climático orientado por evidências, incerteza explícita e decisão humana.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

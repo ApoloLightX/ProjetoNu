@@ -1,0 +1,41 @@
+:root {
+  --faint: #858981;
+}
+
+/* Evidence state is not risk severity. Keep evidence semantics visually neutral. */
+.knowledge-observed::before,
+.legend-observed::before {
+  background: var(--plum);
+}
+
+.evidence-context {
+  color: var(--slate);
+}
+
+.evidence-observed {
+  color: var(--plum);
+}
+
+.evidence-unknown {
+  color: var(--sand);
+}
+
+.evidence-verified {
+  color: var(--moss);
+}
+
+/* The risk result is the first answer; evidence coverage supports it immediately below. */
+.risk-overview {
+  margin-top: 18px;
+}
+
+.knowledge-grid {
+  margin-top: 10px;
+}
+
+@media (min-width: 1121px) {
+  .dimension-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: center;
+  }
+}
