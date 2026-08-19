@@ -1,5 +1,6 @@
 import type {
   AIAssessmentResponse,
+  CompanyRegistryProfile,
   CounterpartyRiskInput,
   EvidenceInput,
   MLBaselineEvaluation,
@@ -11,9 +12,23 @@ const API_URL = process.env.NEXT_PUBLIC_RISK_API_URL ?? "http://localhost:8000";
 
 async function jsonOrThrow<T>(response: Response, context: string): Promise<T> {
   if (!response.ok) {
-    throw new Error(`${context} returned HTTP ${response.status}`);
+    let detail = "";
+    try {
+      const payload = (await response.json()) as { detail?: string };
+      detail = payload.detail ? `: ${payload.detail}` : "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(`${context} returned HTTP ${response.status}${detail}`);
   }
   return (await response.json()) as T;
+}
+
+export async function lookupCompanyRegistry(cnpj: string): Promise<CompanyRegistryProfile> {
+  const response = await fetch(`${API_URL}/v1/registry/cnpj/${encodeURIComponent(cnpj)}`, {
+    method: "GET",
+  });
+  return jsonOrThrow<CompanyRegistryProfile>(response, "Company registry");
 }
 
 export async function runAssessment(input: CounterpartyRiskInput): Promise<SACAssessment> {

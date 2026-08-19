@@ -37,6 +37,26 @@ export type SACAssessment = {
   methodology: string;
 };
 
+export type CompanyRegistryProfile = {
+  cnpj: string;
+  legal_name: string;
+  trade_name: string | null;
+  registration_status: string | null;
+  primary_cnae_code: number | null;
+  primary_cnae_description: string | null;
+  municipality: string | null;
+  state: string | null;
+  postal_code: string | null;
+  opened_at: string | null;
+  company_size: string | null;
+  legal_nature: string | null;
+  source_name: string;
+  source_url: string;
+  source_is_official: boolean;
+  risk_signal: boolean;
+  disclaimer: string;
+};
+
 export type MLBaselinePrediction = {
   model_version: string;
   dataset_version: string;
