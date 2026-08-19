@@ -5,6 +5,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .ai_review import run_ai_assessment
+from .company_registry import (
+    BrasilApiCompanyRegistry,
+    CompanyRegistryError,
+    CompanyRegistryNotFound,
+)
 from .ml_baseline import evaluate_baseline, predict_baseline
 from .persistence import (
     PersistenceError,
@@ -12,6 +17,7 @@ from .persistence import (
     PersistenceNotFound,
     SupabaseRestRepository,
 )
+from .registry_schemas import CompanyRegistryProfile
 from .risk_engine import METHODOLOGY_VERSION, assess_counterparty
 from .schemas import (
     AIAssessmentRequest,
@@ -30,7 +36,7 @@ from .schemas import (
 
 app = FastAPI(
     title="ATLAS SAC Risk Engine",
-    version="0.5.0",
+    version="0.6.0",
     description=(
         "Experimental, explainable social, environmental and climate risk engine. "
         "Portfolio use only; not for real credit decisions."
@@ -105,7 +111,22 @@ def _persist_ai_trace(
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "atlas-sac-risk-engine", "version": "0.5.0"}
+    return {"status": "ok", "service": "atlas-sac-risk-engine", "version": "0.6.0"}
+
+
+@app.get("/v1/registry/cnpj/{cnpj}", response_model=CompanyRegistryProfile)
+def registry_cnpj_lookup(cnpj: str) -> CompanyRegistryProfile:
+    registry = BrasilApiCompanyRegistry()
+    try:
+        return registry.fetch(cnpj)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except CompanyRegistryNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CompanyRegistryError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    finally:
+        registry.close()
 
 
 @app.post("/v1/assessments", response_model=SACAssessment)
