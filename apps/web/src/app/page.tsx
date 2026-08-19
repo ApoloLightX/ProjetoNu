@@ -6,24 +6,33 @@ import {
   AppSidebar,
   EngineStatus,
   EvidenceStateStrip,
-  EvidenceTable,
   HumanReview,
   Methodology,
   RiskFactors,
   RiskOverview,
   type EvidenceRow,
 } from "@/components/assessment";
+import { EvidenceTable } from "@/components/evidence-table";
+import { RegistryProfileCard } from "@/components/registry-profile";
 import {
   loadMlEvaluation,
+  lookupCompanyRegistry,
   runAiAssessment,
   runAssessment,
   runMlPrediction,
 } from "@/lib/api";
 import { DEMO_ASSESSMENT, DEMO_INPUT } from "@/lib/demo";
+import {
+  formatCnpj,
+  normalizeCnpj,
+  registryProfileToContext,
+  registryProfileToEvidence,
+} from "@/lib/registry";
 import { dimensionsOf, toPercent } from "@/lib/risk";
 import type {
   AIAssessmentResponse,
   AssessmentMode,
+  CompanyRegistryProfile,
   CounterpartyRiskInput,
   EvidenceInput,
   MLBaselineEvaluation,
@@ -39,42 +48,42 @@ const sliderFields: Array<{
   {
     key: "sector_environmental_exposure",
     label: "Exposição ambiental do setor",
-    hint: "Risco inerente associado à atividade econômica.",
+    hint: "Risco inerente associado à atividade econômica. Valor controlado da simulação.",
   },
   {
     key: "geographic_environmental_exposure",
     label: "Exposição ambiental geográfica",
-    hint: "Sensibilidade ambiental associada à localização.",
+    hint: "Sensibilidade ambiental associada à localização. Valor controlado da simulação.",
   },
   {
     key: "climate_physical_exposure",
     label: "Exposição climática física",
-    hint: "Exposição a eventos físicos e extremos.",
+    hint: "Exposição a eventos físicos e extremos. Valor controlado da simulação.",
   },
   {
     key: "climate_transition_exposure",
     label: "Exposição climática de transição",
-    hint: "Pressões regulatórias, tecnológicas ou econômicas.",
+    hint: "Pressões regulatórias, tecnológicas ou econômicas. Valor controlado da simulação.",
   },
   {
     key: "social_signal_strength",
     label: "Sinais sociais observados",
-    hint: "Intensidade de sinais específicos da contraparte.",
+    hint: "Sinal sintético usado apenas para demonstrar o comportamento do motor.",
   },
   {
     key: "environmental_event_strength",
     label: "Eventos ambientais observados",
-    hint: "Força dos sinais ambientais específicos da contraparte.",
+    hint: "Sinal sintético usado apenas para demonstrar o comportamento do motor.",
   },
   {
     key: "reputational_signal_strength",
     label: "Sinais reputacionais",
-    hint: "Sinais externos que exigem análise contextual.",
+    hint: "Sinal sintético usado apenas para demonstrar o comportamento do motor.",
   },
   {
     key: "evidence_completeness",
     label: "Completude das evidências",
-    hint: "Quanto da informação necessária está disponível e verificável.",
+    hint: "Cobertura sintética da demonstração. Lacunas reduzem confiança, não risco.",
   },
 ];
 
@@ -84,6 +93,13 @@ export default function HomePage() {
   const [mode, setMode] = useState<AssessmentMode>("preview");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assessmentVisible, setAssessmentVisible] = useState(true);
+
+  const [cnpjQuery, setCnpjQuery] = useState("");
+  const [registryProfile, setRegistryProfile] = useState<CompanyRegistryProfile | null>(null);
+  const [registryLoading, setRegistryLoading] = useState(false);
+  const [registryError, setRegistryError] = useState<string | null>(null);
+
   const [mlPrediction, setMlPrediction] = useState<MLBaselinePrediction | null>(null);
   const [mlEvaluation, setMlEvaluation] = useState<MLBaselineEvaluation | null>(null);
   const [aiReview, setAiReview] = useState<AIAssessmentResponse | null>(null);
@@ -105,43 +121,57 @@ export default function HomePage() {
     [input],
   );
 
-  const evidenceRows = useMemo<EvidenceRow[]>(
-    () => [
+  const evidenceRows = useMemo<EvidenceRow[]>(() => {
+    const rows: EvidenceRow[] = [];
+
+    if (registryProfile) {
+      rows.push({
+        source: registryProfile.source_name,
+        signal: "Identidade cadastral, CNAE e localização",
+        value: formatCnpj(registryProfile.cnpj),
+        confidence: "Proveniência registrada",
+        status: "CONTEXTO",
+        tone: "context",
+      });
+    }
+
+    rows.push(
       {
-        source: "Perfil sintético",
+        source: "Perfil da simulação",
         signal: "Exposição ambiental setorial",
         value: `${toPercent(input.sector_environmental_exposure)}%`,
-        confidence: "Contexto",
+        confidence: "Sintética",
         status: "CONTEXTO",
         tone: "context",
       },
       {
-        source: "Perfil sintético",
+        source: "Perfil da simulação",
         signal: "Exposição ambiental geográfica",
         value: `${toPercent(input.geographic_environmental_exposure)}%`,
-        confidence: "Contexto",
+        confidence: "Sintética",
         status: "CONTEXTO",
         tone: "context",
       },
       {
-        source: "Sinais sintéticos",
+        source: "Sinais da simulação",
         signal: "Força do evento ambiental observado",
         value: `${toPercent(input.environmental_event_strength)}%`,
-        confidence: input.environmental_event_strength > 0.6 ? "Alta" : "Moderada",
+        confidence: input.environmental_event_strength > 0.6 ? "Alta na simulação" : "Moderada na simulação",
         status: "OBSERVADO",
         tone: "observed",
       },
       {
-        source: "Lacuna de evidência",
+        source: "Lacuna da simulação",
         signal: "Completude documental",
         value: `${evidenceCoverage}%`,
         confidence: input.evidence_completeness >= 0.8 ? "Suficiente" : "Limitada",
         status: input.evidence_completeness >= 0.8 ? "COBERTURA" : "DESCONHECIDO",
         tone: input.evidence_completeness >= 0.8 ? "verified" : "unknown",
       },
-    ],
-    [evidenceCoverage, input],
-  );
+    );
+
+    return rows;
+  }, [evidenceCoverage, input, registryProfile]);
 
   useEffect(() => {
     let active = true;
@@ -165,6 +195,47 @@ export default function HomePage() {
     setInput((current) => ({ ...current, [key]: Number(value) }));
   }
 
+  async function lookupCnpj(event: FormEvent) {
+    event.preventDefault();
+    setRegistryLoading(true);
+    setRegistryError(null);
+    setError(null);
+
+    const normalized = normalizeCnpj(cnpjQuery);
+    if (normalized.length !== 14) {
+      setRegistryError("Informe um CNPJ com 14 dígitos.");
+      setRegistryLoading(false);
+      return;
+    }
+
+    try {
+      const profile = await lookupCompanyRegistry(normalized);
+      const context = registryProfileToContext(profile);
+
+      setRegistryProfile(profile);
+      setCnpjQuery(formatCnpj(profile.cnpj));
+      setInput((current) => ({
+        ...current,
+        company_name: context.company_name,
+        sector: context.sector,
+        region: context.region,
+      }));
+      setAssessment((current) => ({ ...current, company_name: context.company_name }));
+      setMlPrediction(null);
+      setAiReview(null);
+      setAiError(null);
+      setMode("preview");
+      setAssessmentVisible(false);
+    } catch (err) {
+      setRegistryProfile(null);
+      setRegistryError(
+        err instanceof Error ? err.message : "Não foi possível consultar o cadastro público.",
+      );
+    } finally {
+      setRegistryLoading(false);
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setLoading(true);
@@ -180,6 +251,7 @@ export default function HomePage() {
       setAssessment(riskResult);
       setMlPrediction(modelResult);
       setMode("live");
+      setAssessmentVisible(true);
     } catch (err) {
       setMode("error");
       setError(err instanceof Error ? err.message : "Não foi possível consultar o motor de risco.");
@@ -192,18 +264,19 @@ export default function HomePage() {
     setAiLoading(true);
     setAiError(null);
 
-    const evidence: EvidenceInput[] = [
-      {
-        evidence_type: "synthetic_demo_context",
-        source_name: "ATLAS synthetic counterparty lab",
-        payload: {
-          sector: input.sector,
-          region: input.region,
-          note: "Synthetic user-controlled demo signals. Not an external factual source.",
-        },
-        is_synthetic: true,
+    const evidence: EvidenceInput[] = [];
+    if (registryProfile) evidence.push(registryProfileToEvidence(registryProfile));
+
+    evidence.push({
+      evidence_type: "synthetic_demo_context",
+      source_name: "ATLAS synthetic counterparty lab",
+      payload: {
+        sector: input.sector,
+        region: input.region,
+        note: "Synthetic user-controlled risk signals. Public registry context, when present, is identity/context only and not an adverse finding.",
       },
-    ];
+      is_synthetic: true,
+    });
 
     try {
       setAiReview(await runAiAssessment(input, evidence));
@@ -220,6 +293,9 @@ export default function HomePage() {
   }
 
   function resetDemo() {
+    setCnpjQuery("");
+    setRegistryProfile(null);
+    setRegistryError(null);
     setInput(DEMO_INPUT);
     setAssessment(DEMO_ASSESSMENT);
     setMlPrediction(null);
@@ -227,6 +303,7 @@ export default function HomePage() {
     setMode("preview");
     setError(null);
     setAiError(null);
+    setAssessmentVisible(true);
   }
 
   return (
@@ -248,48 +325,75 @@ export default function HomePage() {
         <section className="search-section" id="resumo">
           <div className="section-intro">
             <span>Avaliação de contraparte</span>
-            <h1>Entenda o risco antes da decisão.</h1>
+            <h1>Comece pela empresa. Termine na evidência.</h1>
             <p>
-              O ATLAS separa exposição, sinais observados e lacunas de evidência para tornar a
-              análise socioambiental e climática rastreável, contestável e revisável por pessoas.
+              Consulte um CNPJ para carregar identidade, CNAE, localização e proveniência. O cadastro
+              público entra como contexto verificável e nunca como sinal adverso por si só.
             </p>
           </div>
 
-          <form className="counterparty-form" onSubmit={submit}>
-            <div className="search-row">
+          <form className="registry-search" onSubmit={lookupCnpj}>
+            <div className="registry-search-row">
               <input
-                aria-label="Empresa ou contraparte"
-                className="company-search"
-                value={input.company_name}
-                onChange={(event) => updateText("company_name", event.target.value)}
+                aria-label="CNPJ"
+                className="registry-input"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="00.000.000/0000-00"
+                value={cnpjQuery}
+                onChange={(event) => setCnpjQuery(event.target.value)}
               />
-              <button className="button button-primary" type="submit" disabled={loading}>
-                {loading ? "Analisando…" : "Analisar"}
+              <button className="button button-primary" type="submit" disabled={registryLoading}>
+                {registryLoading ? "Consultando…" : "Buscar CNPJ"}
               </button>
             </div>
+            <p className="registry-search-help">
+              O cadastro público preenche contexto empresarial. Nenhum score SAC é calculado a partir
+              do CNPJ nesta etapa.
+            </p>
+          </form>
 
-            <div className="entity-fields">
+          {registryError ? (
+            <div className="inline-alert inline-alert-error">
+              <strong>Consulta cadastral não concluída.</strong>
+              <span>{registryError}</span>
+            </div>
+          ) : null}
+
+          {registryProfile ? <RegistryProfileCard profile={registryProfile} /> : null}
+
+          <form className="counterparty-form" onSubmit={submit}>
+            <div className="analysis-controls">
               <label>
-                <span>Setor</span>
+                <span>Setor usado na simulação</span>
                 <input
                   value={input.sector}
                   onChange={(event) => updateText("sector", event.target.value)}
                 />
               </label>
               <label>
-                <span>Região</span>
+                <span>Região usada na simulação</span>
                 <input
                   value={input.region}
                   onChange={(event) => updateText("region", event.target.value)}
                 />
               </label>
-              <button className="button button-ghost" type="button" onClick={resetDemo}>
-                Restaurar demonstração
-              </button>
+              <div className="analysis-actions">
+                <button className="button button-primary" type="submit" disabled={loading}>
+                  {loading ? "Analisando…" : "Executar simulação"}
+                </button>
+                <button className="button button-ghost" type="button" onClick={resetDemo}>
+                  Restaurar demo
+                </button>
+              </div>
             </div>
+            <p className="analysis-context-note">
+              Os controles SAC abaixo continuam sintéticos. Se um CNPJ foi carregado, somente a
+              identidade, CNAE e localização vêm do cadastro público.
+            </p>
 
             <details className="parameter-drawer">
-              <summary>Parâmetros da demonstração</summary>
+              <summary>Parâmetros sintéticos da simulação</summary>
               <div className="parameter-grid">
                 {sliderFields.map((field) => {
                   const value = input[field.key] as number;
@@ -316,39 +420,68 @@ export default function HomePage() {
           {error ? (
             <div className="inline-alert inline-alert-error">
               <strong>Motor de risco indisponível.</strong>
-              <span>{error}. A prévia sintética continua visível.</span>
+              <span>{error}. Nenhuma decisão deve ser inferida desta tentativa.</span>
             </div>
           ) : null}
         </section>
 
-        <section className="entity-header">
-          <div>
-            <h2>{assessment.company_name}</h2>
-            <p>{input.region} · {input.sector}</p>
-          </div>
-          <div className="entity-badges">
-            <span>Perfil sintético</span>
-            <span>Metodologia experimental</span>
-          </div>
-        </section>
+        {assessmentVisible ? (
+          <>
+            <section className="entity-header">
+              <div>
+                <h2>{assessment.company_name}</h2>
+                <p>{input.region} · {input.sector}</p>
+              </div>
+              <div className="entity-badges">
+                {registryProfile ? <span>Contexto cadastral público</span> : <span>Perfil sintético</span>}
+                <span>Sinais SAC sintéticos</span>
+              </div>
+            </section>
 
-        <RiskOverview assessment={assessment} climateScore={climateScore} />
-        <EvidenceStateStrip coverage={evidenceCoverage} observedSignalCount={observedSignalCount} />
-        <EvidenceTable rows={evidenceRows} />
-        <RiskFactors dimensions={dimensions} />
-        <Methodology
-          mlEvaluation={mlEvaluation}
-          mlPrediction={mlPrediction}
-          aiReview={aiReview}
-          aiLoading={aiLoading}
-          aiError={aiError}
-          onRunReview={runDualModelReview}
-        />
-        <HumanReview assessment={assessment} />
+            {registryProfile ? (
+              <div className="inline-alert simulation-disclaimer">
+                <strong>Simulação experimental.</strong>
+                <span>
+                  O score abaixo usa parâmetros SAC sintéticos e não representa uma avaliação real
+                  da empresa consultada. O CNPJ fornece apenas contexto cadastral e proveniência.
+                </span>
+              </div>
+            ) : null}
+
+            <RiskOverview assessment={assessment} climateScore={climateScore} />
+            <EvidenceStateStrip
+              coverage={evidenceCoverage}
+              observedSignalCount={observedSignalCount}
+            />
+            <EvidenceTable
+              rows={evidenceRows}
+              hasPublicRegistryContext={Boolean(registryProfile)}
+            />
+            <RiskFactors dimensions={dimensions} />
+            <Methodology
+              mlEvaluation={mlEvaluation}
+              mlPrediction={mlPrediction}
+              aiReview={aiReview}
+              aiLoading={aiLoading}
+              aiError={aiError}
+              onRunReview={runDualModelReview}
+            />
+            <HumanReview assessment={assessment} />
+          </>
+        ) : (
+          <section className="registry-next-step panel" aria-label="Próximo passo da análise">
+            <span className="panel-label">Contexto carregado</span>
+            <h2>Cadastro identificado. O risco ainda não foi calculado.</h2>
+            <p>
+              Revise o contexto cadastral e, se quiser explorar o motor, execute a simulação
+              experimental. Os parâmetros SAC permanecem sintéticos e separados do cadastro.
+            </p>
+          </section>
+        )}
 
         <footer className="footer">
           <strong>ATLAS SAC</strong>
-          <span>Projeto independente de engenharia · metodologia experimental e rastreável</span>
+          <span>Projeto independente de engenharia · evidência, incerteza e decisão humana</span>
         </footer>
       </div>
     </main>
