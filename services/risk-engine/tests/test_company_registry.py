@@ -1,7 +1,11 @@
 import httpx
 import pytest
 
-from app.company_registry import BrasilApiCompanyRegistry, CompanyRegistryNotFound, normalize_cnpj
+from app.company_registry import (
+    BrasilApiCompanyRegistry,
+    CompanyRegistryNotFound,
+    normalize_cnpj,
+)
 
 
 FIXTURE = {
