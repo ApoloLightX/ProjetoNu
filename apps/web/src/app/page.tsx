@@ -119,7 +119,7 @@ export default function HomePage() {
   const evidenceRows = useMemo(() => [
     { source: "Perfil sintético", signal: "Exposição ambiental setorial", value: `${toPercent(input.sector_environmental_exposure)}%`, confidence: "Contexto", status: "CONTEXTO", tone: "context" },
     { source: "Perfil sintético", signal: "Exposição ambiental geográfica", value: `${toPercent(input.geographic_environmental_exposure)}%`, confidence: "Contexto", status: "CONTEXTO", tone: "context" },
-    { source: "Sinais sintéticos", signal: "Evento ambiental observado", value: `${toPercent(input.environmental_event_strength)}%`, confidence: input.environmental_event_strength > 0.6 ? "Alta" : "Moderada", status: "OBSERVADO", tone: "observed" },
+    { source: "Sinais sintéticos", signal: "Força do evento ambiental observado", value: `${toPercent(input.environmental_event_strength)}%`, confidence: input.environmental_event_strength > 0.6 ? "Alta" : "Moderada", status: "OBSERVADO", tone: "observed" },
     { source: "Lacuna de evidência", signal: "Completude documental", value: `${toPercent(input.evidence_completeness)}%`, confidence: input.evidence_completeness >= 0.8 ? "Suficiente" : "Limitada", status: input.evidence_completeness >= 0.8 ? "COBERTURA" : "DESCONHECIDO", tone: input.evidence_completeness >= 0.8 ? "verified" : "unknown" },
   ], [input]);
 
@@ -247,7 +247,7 @@ export default function HomePage() {
 
         <section className="knowledge-grid" aria-label="Estado das informações">
           <article className="knowledge-card knowledge-known"><span>O que conseguimos sustentar</span><strong>{toPercent(input.evidence_completeness)}%</strong><p>da evidência esperada está disponível nesta execução.</p></article>
-          <article className="knowledge-card knowledge-observed"><span>O que observamos</span><strong>{observedSignalCount}</strong><p>sinais específicos estão acima do limiar de atenção da demonstração.</p></article>
+          <article className="knowledge-card knowledge-observed"><span>O que observamos</span><strong>{observedSignalCount}</strong><p>sinais simulados estão acima do limiar de atenção da demonstração.</p></article>
           <article className="knowledge-card knowledge-unknown"><span>O que ainda não sabemos</span><strong>{evidenceGap}%</strong><p>de lacuna informacional. Falta de dado reduz confiança, não o risco.</p></article>
         </section>
 
