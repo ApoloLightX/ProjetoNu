@@ -1,11 +1,6 @@
 import httpx
-import pytest
 
-from app.company_registry import (
-    BrasilApiCompanyRegistry,
-    CompanyRegistryNotFound,
-    normalize_cnpj,
-)
+from app.company_registry import BrasilApiCompanyRegistry, CompanyRegistryNotFound, normalize_cnpj
 
 
 FIXTURE = {
@@ -29,8 +24,11 @@ def test_normalize_cnpj_accepts_formatted_input():
 
 
 def test_normalize_cnpj_rejects_bad_shape():
-    with pytest.raises(ValueError):
+    try:
         normalize_cnpj("11111111111111")
+    except ValueError:
+        return
+    raise AssertionError("Expected invalid CNPJ shape to raise ValueError")
 
 
 def test_registry_maps_public_data_without_turning_it_into_risk_signal():
@@ -64,5 +62,8 @@ def test_registry_translates_not_found():
     client = httpx.Client(transport=httpx.MockTransport(handler))
     registry = BrasilApiCompanyRegistry(client=client)
 
-    with pytest.raises(CompanyRegistryNotFound):
+    try:
         registry.fetch("19131243000197")
+    except CompanyRegistryNotFound:
+        return
+    raise AssertionError("Expected missing CNPJ to raise CompanyRegistryNotFound")
