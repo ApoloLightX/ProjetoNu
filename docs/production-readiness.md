@@ -19,11 +19,13 @@ Retryable conditions:
 
 Non-retryable validation and not-found responses fail immediately. Backoff is exponential, capped and jittered. This avoids both silent infinite retries and synchronized retry storms.
 
-### Request correlation
+### Request correlation and dependency telemetry
 
 Every API request receives an `X-Request-ID` response header. A caller-provided request ID is propagated only if it matches a conservative allowlist shape; otherwise the service generates a fresh identifier.
 
-The FastAPI boundary logs a structured completion/failure event containing:
+The request ID is bound to request-scoped telemetry so downstream dependency events can be correlated without logging evidence bodies, prompts or credentials.
+
+The FastAPI boundary logs structured completion/failure events containing:
 
 - request ID;
 - method;
@@ -31,7 +33,17 @@ The FastAPI boundary logs a structured completion/failure event containing:
 - status code when available;
 - elapsed milliseconds.
 
-Secrets, provider keys, raw prompts and evidence payloads are intentionally excluded from these request logs.
+The public registry logs each bounded dependency attempt with:
+
+- dependency and operation name;
+- attempt / maximum attempts;
+- status code or safe error class;
+- elapsed milliseconds;
+- whether another retry will occur.
+
+The AI orchestration records successful analyst/reviewer provider latency against the same request context and records a safe degraded-stage event when an AI provider cannot complete.
+
+Secrets, provider keys, raw prompts and evidence payloads are intentionally excluded from these logs.
 
 ### HTTP security headers
 
@@ -45,6 +57,20 @@ The Next.js frontend emits a small low-risk security baseline:
 The API also emits `X-Content-Type-Options: nosniff` and exposes `X-Request-ID` through CORS.
 
 A strict Content Security Policy is intentionally **not** added in this slice because Next.js requires a deliberate nonce/hash strategy for inline framework scripts. Shipping a cosmetic CSP that has to fall back to `unsafe-inline` would provide a misleading security signal.
+
+### Persistence posture verification
+
+V7 also verifies the connected Supabase persistence boundary rather than assuming the schema is secure because migrations exist.
+
+At the point-in-time inspection on 2026-08-20:
+
+- all five persistence tables had RLS enabled;
+- there were no `anon` / `authenticated` policies for those tables;
+- the persistence RPCs exposed `EXECUTE` to `service_role` only among the application roles checked;
+- the expected replay/evidence/AI/human-review indexes existed;
+- the persistence tables contained no live rows.
+
+See [`database-recovery.md`](./database-recovery.md) for the reproducible schema recovery path, verified indexes and the backup/RPO/RTO boundary.
 
 ## Existing boundaries preserved
 
@@ -89,20 +115,22 @@ When authenticated reviewer/operator accounts become a real product requirement,
 
 ## Database and recovery
 
-The project already uses versioned migrations and immutable assessment snapshots. The next persistence hardening slice should explicitly document and verify:
+The project uses versioned migrations and immutable assessment snapshots. The live database review confirms the current known indexes match the implemented access paths, so V7 does not add speculative indexes to empty tables.
 
-1. backup availability and retention for the Supabase project;
-2. restore procedure and expected RPO/RTO for portfolio/demo data;
-3. indexes for replay, evidence lookup and human-review access paths;
-4. connection behavior under serverless concurrency;
-5. idempotency for any public state-changing write that may be retried.
+The risk engine uses Supabase through HTTPS/PostgREST instead of opening raw PostgreSQL connections from each Vercel invocation. A custom application-side PostgreSQL pool is therefore not introduced in the current architecture.
+
+Backup retention and restore capability remain deliberately unclaimed until verified for the active Supabase plan. Schema/security recovery is reproducible from Git + migrations; runtime-record recovery depends on separately verified backup capability.
+
+Full runbook: [`database-recovery.md`](./database-recovery.md).
 
 ## Observability roadmap
 
-### NOW
+### NOW implemented
 
 - structured request logs;
 - request correlation IDs;
+- public-registry attempt latency/retry telemetry;
+- AI provider success/degradation telemetry without prompt logging;
 - dependency timeouts;
 - safe failure categories;
 - CI as merge gate;
@@ -110,8 +138,8 @@ The project already uses versioned migrations and immutable assessment snapshots
 
 ### SOON
 
-- dependency/provider latency fields linked to the same request/assessment trace;
-- error-rate and latency dashboards;
+- error-rate and latency dashboards over the structured events;
+- persistence dependency latency if database usage becomes material;
 - reviewer audit log once accounts exist;
 - alerting only for failures that require action.
 
