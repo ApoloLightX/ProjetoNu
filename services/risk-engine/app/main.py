@@ -1,5 +1,3 @@
-import json
-import logging
 import os
 import re
 import time
@@ -15,6 +13,7 @@ from .company_registry import (
     CompanyRegistryNotFound,
 )
 from .ml_baseline import evaluate_baseline, predict_baseline
+from .observability import bind_request_id, log_event, reset_request_id
 from .persistence import (
     PersistenceError,
     PersistenceNotConfigured,
@@ -40,8 +39,6 @@ from .schemas import (
 
 APP_VERSION = "0.7.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
-logger = logging.getLogger("atlas.request")
-logger.setLevel(getattr(logging, os.environ.get("RISK_ENGINE_LOG_LEVEL", "INFO").upper(), logging.INFO))
 
 app = FastAPI(
     title="ATLAS SAC Risk Engine",
@@ -78,43 +75,37 @@ def _request_id(value: str | None) -> str:
 async def request_context(request: Request, call_next):
     request_id = _request_id(request.headers.get("x-request-id"))
     request.state.request_id = request_id
+    token = bind_request_id(request_id)
     started = time.perf_counter()
 
     try:
-        response = await call_next(request)
-    except Exception:
-        duration_ms = round((time.perf_counter() - started) * 1000, 2)
-        logger.exception(
-            json.dumps(
-                {
-                    "event": "request_failed",
-                    "request_id": request_id,
-                    "method": request.method,
-                    "path": request.url.path,
-                    "duration_ms": duration_ms,
-                },
-                separators=(",", ":"),
+        try:
+            response = await call_next(request)
+        except Exception:
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            log_event(
+                "request_failed",
+                level=40,
+                exc_info=True,
+                method=request.method,
+                path=request.url.path,
+                duration_ms=duration_ms,
             )
-        )
-        raise
+            raise
 
-    duration_ms = round((time.perf_counter() - started) * 1000, 2)
-    response.headers["X-Request-ID"] = request_id
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    logger.info(
-        json.dumps(
-            {
-                "event": "request_completed",
-                "request_id": request_id,
-                "method": request.method,
-                "path": request.url.path,
-                "status_code": response.status_code,
-                "duration_ms": duration_ms,
-            },
-            separators=(",", ":"),
+        duration_ms = round((time.perf_counter() - started) * 1000, 2)
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        log_event(
+            "request_completed",
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=duration_ms,
         )
-    )
-    return response
+        return response
+    finally:
+        reset_request_id(token)
 
 
 def _repository() -> SupabaseRestRepository:
