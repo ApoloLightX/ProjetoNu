@@ -13,6 +13,7 @@ import {
   type EvidenceRow,
 } from "@/components/assessment";
 import { EvidenceTable } from "@/components/evidence-table";
+import { EvidenceTraceExplorer } from "@/components/evidence-trace";
 import { RegistryProfileCard } from "@/components/registry-profile";
 import {
   loadMlEvaluation,
@@ -22,6 +23,7 @@ import {
   runMlPrediction,
 } from "@/lib/api";
 import { DEMO_ASSESSMENT, DEMO_INPUT } from "@/lib/demo";
+import { buildEvidenceTraces } from "@/lib/evidence-trace";
 import {
   formatCnpj,
   normalizeCnpj,
@@ -172,6 +174,11 @@ export default function HomePage() {
 
     return rows;
   }, [evidenceCoverage, input, registryProfile]);
+
+  const evidenceTraces = useMemo(
+    () => buildEvidenceTraces({ assessment, input, registryProfile }),
+    [assessment, input, registryProfile],
+  );
 
   useEffect(() => {
     let active = true;
@@ -457,6 +464,7 @@ export default function HomePage() {
               rows={evidenceRows}
               hasPublicRegistryContext={Boolean(registryProfile)}
             />
+            <EvidenceTraceExplorer traces={evidenceTraces} />
             <RiskFactors dimensions={dimensions} />
             <Methodology
               mlEvaluation={mlEvaluation}
