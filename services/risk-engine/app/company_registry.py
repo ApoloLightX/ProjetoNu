@@ -1,3 +1,4 @@
+import logging
 import random
 import re
 import time
@@ -5,6 +6,7 @@ from collections.abc import Callable
 
 import httpx
 
+from .observability import log_event
 from .registry_schemas import CompanyRegistryProfile
 
 BRASIL_API_BASE_URL = "https://brasilapi.com.br/api/cnpj/v1"
@@ -114,6 +116,7 @@ class BrasilApiCompanyRegistry:
         last_request_error: httpx.RequestError | None = None
 
         for attempt in range(1, self.max_attempts + 1):
+            started = time.perf_counter()
             try:
                 response = self.client.get(
                     source_url,
@@ -127,10 +130,43 @@ class BrasilApiCompanyRegistry:
                 )
             except httpx.RequestError as exc:
                 last_request_error = exc
-                if attempt >= self.max_attempts:
+                duration_ms = round((time.perf_counter() - started) * 1000, 2)
+                retrying = attempt < self.max_attempts
+                log_event(
+                    "dependency_attempt_failed",
+                    level=logging.WARNING,
+                    dependency="brasilapi_cnpj",
+                    operation="registry_lookup",
+                    attempt=attempt,
+                    max_attempts=self.max_attempts,
+                    duration_ms=duration_ms,
+                    error_type=type(exc).__name__,
+                    retrying=retrying,
+                )
+                if not retrying:
                     break
                 self._sleep(self._retry_delay(attempt))
                 continue
+
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            retrying = (
+                response.status_code in RETRYABLE_STATUS_CODES and attempt < self.max_attempts
+            )
+            log_event(
+                "dependency_attempt_completed",
+                level=(
+                    logging.WARNING
+                    if response.status_code in RETRYABLE_STATUS_CODES
+                    else logging.INFO
+                ),
+                dependency="brasilapi_cnpj",
+                operation="registry_lookup",
+                attempt=attempt,
+                max_attempts=self.max_attempts,
+                status_code=response.status_code,
+                duration_ms=duration_ms,
+                retrying=retrying,
+            )
 
             if response.status_code not in RETRYABLE_STATUS_CODES:
                 return response
