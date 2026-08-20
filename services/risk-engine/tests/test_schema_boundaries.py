@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import EvidenceInput, MAX_EVIDENCE_PAYLOAD_BYTES
+from app.schemas import MAX_EVIDENCE_PAYLOAD_BYTES, EvidenceInput
 
 
 def test_evidence_payload_accepts_small_structured_data():
