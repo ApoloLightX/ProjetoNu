@@ -10,6 +10,12 @@ logger.setLevel(
     getattr(logging, os.environ.get("RISK_ENGINE_LOG_LEVEL", "INFO").upper(), logging.INFO)
 )
 
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(_handler)
+logger.propagate = False
+
 
 def bind_request_id(request_id: str) -> Token:
     return _REQUEST_ID.set(request_id)
