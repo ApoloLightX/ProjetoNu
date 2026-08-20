@@ -2,6 +2,7 @@ import httpx
 
 from app.company_registry import (
     BrasilApiCompanyRegistry,
+    CompanyRegistryError,
     CompanyRegistryNotFound,
     normalize_cnpj,
 )
@@ -58,15 +59,96 @@ def test_registry_maps_public_data_without_turning_it_into_risk_signal():
     assert captured["url"].endswith("/19131243000197")
 
 
-def test_registry_translates_not_found():
+def test_registry_translates_not_found_without_retrying():
+    calls = 0
+
     def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
         return httpx.Response(404, json={"message": "not found"})
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    registry = BrasilApiCompanyRegistry(client=client)
+    registry = BrasilApiCompanyRegistry(client=client, sleep=lambda _: None)
 
     try:
         registry.fetch("19131243000197")
     except CompanyRegistryNotFound:
+        assert calls == 1
         return
     raise AssertionError("Expected missing CNPJ to raise CompanyRegistryNotFound")
+
+
+def test_registry_retries_transient_status_then_recovers():
+    calls = 0
+    delays: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(503, json={"message": "temporary"})
+        return httpx.Response(200, json=FIXTURE)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    registry = BrasilApiCompanyRegistry(
+        client=client,
+        sleep=delays.append,
+        jitter=lambda _start, _end: 0.0,
+    )
+
+    profile = registry.fetch("19131243000197")
+
+    assert profile.legal_name == "EMPRESA DEMONSTRACAO LTDA"
+    assert calls == 2
+    assert delays == [0.2]
+
+
+def test_registry_stops_after_bounded_transient_failures():
+    calls = 0
+    delays: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503, json={"message": "temporary"})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    registry = BrasilApiCompanyRegistry(
+        client=client,
+        max_attempts=3,
+        sleep=delays.append,
+        jitter=lambda _start, _end: 0.0,
+    )
+
+    try:
+        registry.fetch("19131243000197")
+    except CompanyRegistryError:
+        assert calls == 3
+        assert delays == [0.2, 0.4]
+        return
+    raise AssertionError("Expected repeated transient failures to raise CompanyRegistryError")
+
+
+def test_registry_retries_request_error_then_recovers():
+    calls = 0
+    delays: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise httpx.ConnectError("temporary network failure", request=request)
+        return httpx.Response(200, json=FIXTURE)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    registry = BrasilApiCompanyRegistry(
+        client=client,
+        sleep=delays.append,
+        jitter=lambda _start, _end: 0.0,
+    )
+
+    profile = registry.fetch("19131243000197")
+
+    assert profile.cnpj == "19131243000197"
+    assert calls == 2
+    assert delays == [0.2]
