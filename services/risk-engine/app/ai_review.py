@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 from typing import Protocol
 
 from .ai_providers import (
@@ -9,6 +10,7 @@ from .ai_providers import (
     GroqReviewerClient,
 )
 from .ml_baseline import predict_baseline
+from .observability import log_event
 from .risk_engine import assess_counterparty
 from .schemas import (
     AIAnalystAction,
@@ -203,6 +205,7 @@ def run_ai_assessment(
     provider_runs: list[AIProviderRun] = []
     created_analyst = analyst_client is None
     created_reviewer = reviewer_client is None
+    current_stage = "provider_initialization"
 
     try:
         if analyst_client is None:
@@ -210,6 +213,7 @@ def run_ai_assessment(
         if reviewer_client is None:
             reviewer_client = GroqReviewerClient.from_env()
 
+        current_stage = "analyst"
         analyst_prompt, allowed_refs = _analyst_prompt(request)
         analyst, analyst_latency = analyst_client.analyze(analyst_prompt)
         _validate_analyst_references(analyst, allowed_refs)
@@ -223,7 +227,15 @@ def run_ai_assessment(
                 latency_ms=analyst_latency,
             )
         )
+        log_event(
+            "dependency_completed",
+            dependency=analyst_client.provider,
+            operation="ai_analyst",
+            model=analyst_client.model,
+            duration_ms=analyst_latency,
+        )
 
+        current_stage = "reviewer"
         reviewer_prompt = _reviewer_prompt(request, analyst)
         reviewer, reviewer_latency = reviewer_client.review(reviewer_prompt)
         provider_runs.append(
@@ -236,7 +248,20 @@ def run_ai_assessment(
                 latency_ms=reviewer_latency,
             )
         )
+        log_event(
+            "dependency_completed",
+            dependency=reviewer_client.provider,
+            operation="ai_reviewer",
+            model=reviewer_client.model,
+            duration_ms=reviewer_latency,
+        )
     except (AIProviderNotConfigured, AIProviderError) as exc:
+        log_event(
+            "ai_review_degraded",
+            level=logging.WARNING,
+            stage=current_stage,
+            error_type=type(exc).__name__,
+        )
         return _degraded_response(request, str(exc), provider_runs)
     finally:
         if created_analyst and analyst_client is not None:
