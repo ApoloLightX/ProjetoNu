@@ -1,91 +1,266 @@
 # ATLAS SAC
 
-**AI-assisted Social, Environmental & Climate Risk Intelligence**
+**Evidence-first Social, Environmental & Climate Risk Intelligence**
+
+[![CI](https://github.com/ApoloLightX/ProjetoNu/actions/workflows/ci.yml/badge.svg)](https://github.com/ApoloLightX/ProjetoNu/actions/workflows/ci.yml)
+
+**Live product:** https://atlas-sac-ui.vercel.app  
+**Risk engine:** https://atlas-sac-api.vercel.app  
 
 ATLAS SAC is an independent experimental platform for identifying, classifying, explaining and monitoring **social, environmental and climate (SAC) risk** in corporate counterparties.
 
-The project explores a simple question:
+The project explores one engineering question:
 
-> How can public data, deterministic rules, statistical models and LLM-assisted analysis support traceable SAC risk assessment without turning a probabilistic model into an unquestioned decision-maker?
+> How can public data, deterministic rules, statistical models and LLM-assisted review support a traceable SAC risk assessment without turning probabilistic models into unquestioned decision-makers?
 
-## Current state
+## Product thesis
 
-The project currently includes:
+ATLAS is built around five boundaries:
 
-- Next.js + TypeScript interactive risk console
-- Python + FastAPI deterministic SAC risk engine
-- Explicit separation of inherent risk and observed risk
-- Five SAC risk dimensions
-- Evidence-completeness confidence and human-review gates
-- Decision trace
-- PostgreSQL/Supabase immutable assessment persistence and replay layer
-- RLS-enabled assessment tables with server-only privileged writes
-- Versioned synthetic ML dataset generator
-- scikit-learn Logistic Regression baseline with holdout evaluation
-- ROC-AUC, precision, recall and Brier-score reporting
-- Gemini structured risk analyst
-- Groq independent adversarial reviewer
-- Evidence-reference allowlist and prompt-injection boundary
-- Safe degradation when AI providers fail or return ungrounded output
-- Versioned prompt metadata, input hashes and optional server-only AI run trace persistence
-- GitHub Actions checks for Python lint/tests and TypeScript typecheck/tests/build
+1. **Evidence before narrative.** Material conclusions must be traceable back to supplied data or explicit model inputs.
+2. **Inherent exposure is not observed misconduct.** Sector/geographic context stays separate from company-specific adverse evidence.
+3. **Uncertainty is visible.** Missing evidence reduces confidence and can increase the need for human review; it must not make a counterparty look safer.
+4. **AI assists, it does not own the decision.** LLMs explain and challenge; they do not rewrite deterministic scores.
+5. **Human review is a governance gate.** High risk, weak evidence, disagreement or material ambiguity can prevent automatic closure.
 
-The default UI loads an explicitly labeled **synthetic preview**. Clicking **Run live assessment** calls the FastAPI `POST /v1/assessments` endpoint and switches the interface to `LIVE ENGINE` when the request succeeds.
+## What works today
 
-Persistence code is implemented but intentionally **fails closed** until a dedicated Supabase project is configured and the migrations are applied. The service-role key belongs only on the backend.
+The current public product includes:
 
-## Why this exists
+- a Next.js + TypeScript institutional risk workstation;
+- CNPJ-first company lookup through a public registry connector;
+- explicit provenance for registry context;
+- a hard `risk_signal=false` boundary for CNPJ registry data;
+- deterministic SAC risk scoring across five dimensions;
+- separate inherent and observed risk layers;
+- evidence completeness, uncertainty and human-review gates;
+- a first-class evidence trace explorer;
+- an interpretable synthetic Logistic Regression baseline;
+- holdout ROC-AUC, precision, recall and Brier-score reporting;
+- Gemini structured analyst + Groq independent reviewer;
+- evidence-reference allowlisting and prompt-injection boundaries;
+- safe degradation when AI providers fail or return unsupported output;
+- immutable assessment snapshots and replay through Supabase/PostgreSQL;
+- separate human-review and AI-trace persistence;
+- RLS-enabled persistence with server-only privileged writes;
+- bounded retry/backoff for retry-safe public-data GET requests;
+- request correlation through `X-Request-ID`;
+- structured request/dependency telemetry without raw prompts or secrets;
+- conservative frontend/API security headers;
+- GitHub Actions quality gates for Python and web builds.
 
-Financial institutions need mechanisms to identify, assess, classify and monitor social, environmental and climate risk using consistent, verifiable information, including public information. Brazilian regulation also connects these risks to counterparty due diligence and credit-risk monitoring.
+### Important public-demo boundary
 
-ATLAS SAC is built as a **portfolio and engineering research project**. It does not reproduce any institution's internal models, policies or processes, and it is not a credit-decision engine.
+A real CNPJ can load **identity, CNAE, municipality/state and provenance**.
 
-## Core principles
+That does **not** make the SAC result a real finding about that company. The public demo still uses clearly labeled synthetic SAC signals for the experimental risk calculation. Registry context is never silently converted into adverse observed evidence.
 
-1. **Evidence before narrative** — every material conclusion must point back to data or documentary evidence.
-2. **Inherent risk is not observed misconduct** — sector/geographic exposure and company-specific evidence are modeled separately.
-3. **Uncertainty is explicit** — missing data reduces confidence; absence of evidence is not treated as absence of risk.
-4. **LLMs assist, they do not own the decision** — model disagreement or weak evidence can force human review.
-5. **Reproducibility matters** — inputs, rules, model versions, prompt versions and AI runs are traceable.
-6. **Synthetic where necessary, real where defensible** — demo datasets are clearly labeled and never presented as real credit performance.
+## Current user flow
+
+```text
+CNPJ / company
+      ↓
+public registry context
+      ↓
+identity + CNAE + location + provenance
+      ↓
+explicit experimental SAC simulation
+      ↓
+deterministic risk + synthetic ML signal
+      ↓
+evidence trace
+      ↓
+Gemini analyst
+      ↓
+Groq independent reviewer
+      ↓
+human-review gate when required
+```
 
 ## Architecture
 
-```text
-Next.js / TypeScript
-        |
-        v
-Python / FastAPI Risk Engine
-        |
-  +-----+------------------------+
-  |     |                        |
-Rules  Statistical/ML      AI Review Layer
-  |     |                 Gemini -> Groq
-  +-----+------------------------+
-        |
-        v
-Human-review gate
-        |
-        v
-Supabase / PostgreSQL
-        |
-        v
-Evidence + immutable assessments + AI traces + human review
+```mermaid
+flowchart TD
+    UI[Next.js / TypeScript workstation] --> API[FastAPI risk engine]
+
+    API --> REG[Public registry connector]
+    API --> RULES[Deterministic SAC rules]
+    API --> ML[Synthetic ML baseline]
+
+    RULES --> TRACE[Evidence / decision trace]
+    ML --> TRACE
+    REG --> TRACE
+
+    TRACE --> GEMINI[Gemini analyst]
+    GEMINI --> GROQ[Groq independent reviewer]
+    GROQ --> GATE[Human-review gate]
+    RULES --> GATE
+
+    API --> DB[(Supabase / PostgreSQL)]
+    DB --> SNAP[Immutable assessment snapshots]
+    DB --> AI[AI run traces]
+    DB --> REVIEW[Human reviews]
 ```
+
+## Why the AI layer cannot decide
+
+The LLM path is intentionally subordinate to the deterministic methodology.
+
+- Gemini receives only the supplied counterparty inputs, deterministic result, synthetic ML result and enumerated evidence.
+- Every material analyst finding must cite an allowed reference such as `DET:environmental_risk`, `ML:synthetic_baseline` or `E1`.
+- Groq independently challenges unsupported claims, inherent-vs-observed confusion, missing-evidence assumptions and misuse of the synthetic ML signal.
+- Unknown evidence references invalidate the AI path.
+- Model disagreement can increase review requirements.
+- LLM output cannot lower a deterministic human-review requirement.
+- Provider failure degrades to the safer deterministic path.
+
+See [`docs/ai-review.md`](docs/ai-review.md).
+
+## Evidence model
+
+ATLAS distinguishes the state of information from its severity.
+
+```text
+CONTEXT
+information that helps identify/explain exposure
+
+OBSERVED
+counterparty-specific signal/evidence
+
+UNKNOWN
+expected information that is missing or not validated
+```
+
+The Evidence Trace V1 lets a reviewer move backward from a conclusion to its drivers, evidence class, provenance and methodological boundaries without asking an LLM to reconstruct the history after the fact.
+
+See [`docs/evidence-trace.md`](docs/evidence-trace.md).
+
+## Risk methodology
+
+The deterministic layer produces five SAC dimensions:
+
+- social;
+- environmental;
+- climate physical;
+- climate transition;
+- reputational/context.
+
+It also keeps **inherent risk** separate from **observed risk**.
+
+`evidence_completeness` affects confidence and human review, not the synthetic ML risk feature set. This is deliberate: missing evidence must not become a mechanism for making a counterparty look safer.
+
+## Statistical baseline
+
+```text
+GET  /v1/ml/evaluation
+POST /v1/ml/predict
+```
+
+The first model is Logistic Regression trained on a reproducible **synthetic dataset**. It exists as an interpretable statistical baseline, not as a claim of production credit performance.
+
+The API reports multiple holdout metrics rather than presenting one flattering number in isolation.
+
+See [`docs/ml-baseline.md`](docs/ml-baseline.md).
+
+## Public data and provenance
+
+```text
+GET /v1/registry/cnpj/{cnpj}
+```
+
+The first connector uses BrasilAPI / Minha Receita as a registry enrichment source.
+
+Normalized context includes fields such as:
+
+- legal / trade name;
+- registration status;
+- primary CNAE;
+- municipality and state;
+- company size;
+- legal nature;
+- exact source URL.
+
+The response explicitly preserves:
+
+```text
+source_is_official = false
+risk_signal = false
+```
+
+That is a product boundary, not metadata decoration.
+
+See [`docs/public-data.md`](docs/public-data.md).
+
+## Persistence and replay
+
+The dedicated Supabase project has the versioned migrations applied. Privileged persistence remains backend-only.
+
+```text
+POST /v1/assessments                  deterministic assessment
+POST /v1/assessments/persist          immutable assessment snapshot
+GET  /v1/assessments/{run_id}         replay stored result
+POST /v1/assessments/{run_id}/reviews separate human review
+POST /v1/ai/assess                     assistive AI review
+```
+
+Past results store input/result snapshots plus methodology version so historical decisions can be inspected without silently recomputing them using future rules.
+
+The persistence boundary has been checked against the connected database for RLS, grants and known query-path indexes. ATLAS deliberately does not invent a backup guarantee until the active provider backup/retention capability is verified.
+
+See [`docs/database-recovery.md`](docs/database-recovery.md).
+
+## Production-readiness posture
+
+ATLAS does not treat infrastructure keywords as badges.
+
+V7 focuses on controls that the current architecture actually needs:
+
+- explicit dependency timeouts;
+- bounded retries with exponential backoff + jitter for retry-safe CNPJ GETs;
+- request correlation IDs;
+- structured request/dependency telemetry;
+- security headers;
+- CI + preview deployment + rollback path;
+- database security/index/recovery review.
+
+Platform/shared rate limiting remains a **NOW** concern for expensive public routes. ATLAS does not pretend that an in-memory counter inside a serverless FastAPI process would provide a globally correct limiter.
+
+Kubernetes, sharding, service discovery, distributed locks, Saga frameworks, active-active multi-region and chaos engineering are intentionally deferred until a measured workload or reliability requirement justifies them.
+
+See [`docs/production-readiness.md`](docs/production-readiness.md).
 
 ## Stack
 
 - **Frontend:** Next.js, React, TypeScript
 - **Risk engine:** Python, FastAPI, Pydantic, HTTPX
 - **Data:** PostgreSQL / Supabase
-- **ML:** scikit-learn, versioned synthetic data, Logistic Regression baseline
-- **AI:** Gemini + Groq, structured outputs, grounded evidence references, independent reviewer pattern
+- **ML:** scikit-learn, Logistic Regression, versioned synthetic data
+- **AI:** Gemini + Groq, structured outputs, independent reviewer pattern
 - **Testing:** pytest + Vitest
-- **CI:** GitHub Actions with Ruff, pytest, TypeScript checks, Vitest and production build
+- **CI/CD:** GitHub Actions + Vercel previews/production
+
+## Repository map
+
+```text
+ProjetoNu/
+├── apps/web/                  # public Next.js workstation
+├── services/risk-engine/      # FastAPI + rules + ML + AI + persistence
+├── supabase/migrations/       # versioned database/security migrations
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── ai-review.md
+│   ├── database-recovery.md
+│   ├── deployment.md
+│   ├── evidence-trace.md
+│   ├── ml-baseline.md
+│   ├── production-readiness.md
+│   └── public-data.md
+└── .github/workflows/ci.yml
+```
 
 ## Run locally
 
-### 1. Risk engine
+### Risk engine
 
 ```bash
 cd services/risk-engine
@@ -95,9 +270,9 @@ pip install -e ".[dev]"
 uvicorn app.main:app --reload --port 8000
 ```
 
-API documentation: `http://localhost:8000/docs`
+API docs: `http://localhost:8000/docs`
 
-### 2. Web app
+### Web app
 
 ```bash
 cd apps/web
@@ -107,151 +282,116 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-The web app defaults to `http://localhost:8000`. For another endpoint:
+The frontend defaults to `http://localhost:8000`. To point it elsewhere:
 
 ```bash
 NEXT_PUBLIC_RISK_API_URL=https://your-risk-engine.example
 ```
 
-For browser access from a deployed frontend, configure the backend with:
+For cross-origin browser access, configure the backend allowlist:
 
 ```bash
 RISK_ENGINE_ALLOWED_ORIGINS=https://your-frontend.example
 ```
 
-## Persistence and replay
+Server-side provider/persistence credentials are configured only in the backend environment and are never committed to the repository.
 
-Apply the migrations in `supabase/migrations` to a **dedicated** Supabase/PostgreSQL project, then configure server-only environment variables:
+## Testing and CI
 
-```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=server-only-secret
-```
-
-Available endpoints:
+The pull-request pipeline runs:
 
 ```text
-POST /v1/assessments                  deterministic assessment, no persistence required
-POST /v1/assessments/persist          atomic counterparty + evidence + assessment snapshot
-GET  /v1/assessments/{run_id}         replay an immutable stored result
-POST /v1/assessments/{run_id}/reviews persist a separate human decision
+Python
+  Ruff
+  pytest
+
+Web
+  TypeScript typecheck
+  Vitest
+  Next.js production build
 ```
 
-The persistence RPC stores input and result snapshots with a methodology version so a past decision can be inspected without silently recomputing it using future rules.
-
-## Statistical baseline
-
-The ML layer is deliberately separate from the deterministic risk rules.
-
-```text
-GET  /v1/ml/evaluation
-POST /v1/ml/predict
-```
-
-The first model is a Logistic Regression pipeline trained on a reproducible synthetic dataset. The API exposes holdout ROC-AUC, precision, recall and Brier score rather than presenting one flattering metric in isolation.
-
-`evidence_completeness` is intentionally excluded from ML risk features. Missing evidence affects confidence and human review in the deterministic layer, not the model's risk probability.
-
-See [`docs/ml-baseline.md`](docs/ml-baseline.md) for the synthetic-label function, feature definitions, evaluation design and leakage limitations.
-
-## AI-assisted review
-
-```text
-POST /v1/ai/assess
-```
-
-The AI path follows a dual-model pattern:
-
-1. **Gemini analyst** interprets only the supplied deterministic result, synthetic ML signal and enumerated evidence.
-2. Every analyst finding must cite an allowed reference such as `DET:environmental_risk`, `ML:synthetic_baseline` or `E1`.
-3. **Groq reviewer** independently challenges unsupported claims, inherent-vs-observed confusion, missing-evidence assumptions and misuse of synthetic ML output.
-4. Model disagreement can force `HUMAN_REVIEW_REQUIRED`.
-5. Unknown evidence references, invalid structured output, missing API keys or provider failures safely degrade to the deterministic path.
-
-Evidence payloads are explicitly treated as **untrusted data**. Instructions embedded inside documents or payloads cannot legitimately redefine the task or change policy.
-
-Successful runs expose provider, model, role, prompt version, input SHA-256 and latency. If an existing `assessment_run_id` is supplied and Supabase is configured, the server can persist the structured AI trace without storing raw prompts or secrets.
-
-See [`docs/ai-review.md`](docs/ai-review.md) for the complete control design and limitations.
-
-## V1 experience
-
-The synthetic counterparty lab exposes normalized signals so reviewers can change the input and immediately see the impact on:
-
-- Social risk
-- Environmental risk
-- Climate physical risk
-- Climate transition risk
-- Reputational/context risk
-- Inherent vs. observed risk
-- Evidence completeness
-- Confidence / uncertainty
-- Human-review requirement
-- Decision trace
-
-A central design rule is that **low evidence completeness cannot make the counterparty look safer**. It lowers confidence and can force human review.
-
-## Regulatory and public-policy inspiration
-
-The project is informed by public materials, not by private/internal bank information:
-
-- Banco Central do Brasil — Resolução CMN 4.943/2021: https://www.bcb.gov.br/estabilidadefinanceira/exibenormativo?numero=4943&tipo=Resolu%C3%A7%C3%A3o+CMN
-- Banco Central do Brasil — DRSAC (Documento de Risco Social, Ambiental e Climático): https://www.bcb.gov.br/estabilidadefinanceira/leiaute-documento-2030
-- Nubank public governance / PRSAC page: https://international.nubank.com.br/pt-br/governanca/
-
-These references define the **problem class and terminology**. ATLAS SAC does not claim regulatory compliance, legal adequacy, or equivalence to any institution's production system.
+Production-hardening tests additionally cover retry boundaries, request-ID propagation and structured telemetry behavior.
 
 ## Roadmap
 
-### V0 — Foundation
-- [x] Project thesis and guardrails
-- [x] Repository foundation
-- [x] FastAPI health/risk endpoints
+### V0 · Foundation
+- [x] project thesis and safety boundaries
+- [x] repository / FastAPI foundation
+- [x] deterministic SAC engine
 - [x] Supabase schema
-- [x] Deterministic risk engine v0
-- [x] Automated Python quality gate
+- [x] automated Python quality gate
 
-### V1 — Functional demo
-- [x] Synthetic counterparty lab
+### V1 · Functional demo
+- [x] synthetic counterparty lab
 - [x] SAC dashboard
-- [x] Inherent vs. observed risk
-- [x] Evidence completeness and uncertainty
-- [x] Decision trace
-- [x] Human-review state
+- [x] inherent vs observed risk
+- [x] evidence completeness and uncertainty
+- [x] human-review state
 - [x] Next.js → FastAPI integration
-- [x] Web typecheck, unit tests and production build
 
-### V1.1 — Persistence & governance
-- [x] Immutable assessment snapshots
-- [x] Atomic evidence + assessment persistence function
-- [x] Methodology version stored per run
-- [x] Replay API
-- [x] Human review stored separately from model output
-- [x] RLS / server-only persistence boundary
-- [x] AI-run trace RPC without raw prompts/secrets
-- [ ] Apply migrations to a dedicated Supabase project
-- [ ] Persist/replay from the public demo UI
-
-### V2 — AI + ML
-- [x] Versioned synthetic ML dataset
-- [x] Interpretable statistical/ML baseline
-- [x] Holdout metrics and leakage documentation
-- [x] Gemini structured risk analyst
+### V2 · ML + governed AI
+- [x] reproducible synthetic ML baseline
+- [x] holdout evaluation
+- [x] Gemini structured analyst
 - [x] Groq independent reviewer
-- [x] Model-disagreement gate
-- [x] Evidence-reference grounding
-- [x] Prompt-injection boundary for untrusted evidence
-- [x] Safe AI degradation tests
-- [ ] Verify real provider calls using deployment secrets
-- [ ] Surface ML + AI review in the public UI
+- [x] evidence-reference grounding
+- [x] prompt-injection boundary
+- [x] safe AI degradation
 
-### V3 — Monitoring & evidence
-- [ ] Public-data connectors with provenance
-- [ ] Evidence graph with source locators
-- [ ] Risk timeline
-- [ ] Risk drift detection
-- [ ] Reassessment triggers
+### V3 · Public company context
+- [x] public CNPJ enrichment
+- [x] normalized company profile
+- [x] provenance boundary
+- [x] `risk_signal=false`
+
+### V4 · Institutional workstation
+- [x] evidence-first visual hierarchy
+- [x] risk / uncertainty / human-review focus
+- [x] methodology subordinate to the decision surface
+- [x] responsive web experience
+
+### V5 · CNPJ-first workflow
+- [x] real CNPJ as company-context entry point
+- [x] explicit separation between real registry data and synthetic SAC simulation
+- [x] provenance-aware evidence table
+
+### V6 · Evidence trace
+- [x] consolidated SAC trace
+- [x] environmental trace
+- [x] inherent vs observed trace
+- [x] uncertainty / missing-evidence trace
+- [x] trace-boundary tests
+
+### V7 · Production hardening
+- [x] outbound timeouts
+- [x] bounded retry/backoff for public registry
+- [x] request correlation
+- [x] request/dependency telemetry
+- [x] conservative security headers
+- [x] database RLS/grant/index review
+- [x] reproducible recovery runbook
+- [ ] platform/shared rate limiting for expensive public endpoints
+- [ ] verify provider backup retention before claiming runtime-data RPO/RTO
+
+### Later, only when justified by product evidence
+- [ ] authenticated reviewer accounts + passkeys/WebAuthn
+- [ ] persisted evidence graph with stable node/edge IDs
+- [ ] real SAC evidence connectors with source-specific provenance
+- [ ] risk timeline / reassessment triggers
+- [ ] reviewer audit workflow
+- [ ] SLI/SLO/error-budget program after meaningful traffic exists
+
+## Public-policy inspiration
+
+The project is informed by public materials, not private/internal bank information:
+
+- Banco Central do Brasil — Resolução CMN 4.943/2021
+- Banco Central do Brasil — DRSAC
+- Nubank public governance / PRSAC materials
+
+These references define the **problem class and terminology**. ATLAS does not claim regulatory compliance, legal adequacy, or equivalence to any institution's production system.
 
 ## Disclaimer
 
-ATLAS SAC is an educational and portfolio project. It is **not affiliated with Nubank**, is not financial or legal advice, and must not be used to make real credit or onboarding decisions without appropriate governance, validation, data rights and qualified human review.
+ATLAS SAC is an educational, portfolio and engineering research project. It is **not affiliated with Nubank**, is not financial or legal advice, and must not be used to make real credit, onboarding or counterparty decisions without appropriate governance, validation, data rights and qualified human review.
