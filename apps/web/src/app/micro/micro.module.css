@@ -1,0 +1,804 @@
+.page {
+  min-height: 100vh;
+  background: #0d0f0e;
+  color: #f2f0e9;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 28px;
+  border-bottom: 1px solid #2b302c;
+  background: rgba(13, 15, 14, 0.96);
+}
+
+.brand,
+.topnav {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 12px;
+  min-width: 0;
+}
+
+.brandMark {
+  width: 3px;
+  height: 26px;
+  border-radius: 999px;
+  background: #c9b98d;
+}
+
+.brand strong {
+  letter-spacing: 0.09em;
+  font-size: 0.92rem;
+}
+
+.brand > span:last-child {
+  color: #aaa89f;
+  font-size: 0.76rem;
+}
+
+.topnav {
+  gap: 14px;
+  color: #aaa89f;
+  font-size: 0.76rem;
+}
+
+.topnav a {
+  padding: 8px 10px;
+  border: 1px solid #2b302c;
+  border-radius: 7px;
+  color: #f2f0e9;
+}
+
+.syntheticPill {
+  padding: 6px 9px;
+  border-radius: 999px;
+  border: 1px solid #3c3625;
+  background: #2a251a;
+  color: #c9b98d;
+  letter-spacing: 0.03em;
+}
+
+.shell {
+  width: min(1240px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 56px 0 72px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
+  gap: 24px;
+  align-items: stretch;
+  padding-bottom: 34px;
+}
+
+.heroCopy {
+  padding: 12px 0 8px;
+}
+
+.eyebrow,
+.sectionKicker {
+  display: block;
+  margin-bottom: 10px;
+  color: #947b90;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  max-width: 850px;
+  margin: 0;
+  font-size: clamp(2.35rem, 6vw, 5rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  font-weight: 620;
+}
+
+.heroCopy > p {
+  max-width: 790px;
+  margin: 24px 0 0;
+  color: #aaa89f;
+  font-size: 1.03rem;
+  line-height: 1.72;
+}
+
+.principleCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 250px;
+  padding: 24px;
+  border: 1px solid #3c3625;
+  border-radius: 9px;
+  background: #171710;
+}
+
+.principleCard > span {
+  color: #c9b98d;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.principleCard strong {
+  margin-top: 14px;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  font-weight: 560;
+}
+
+.principleCard p {
+  margin: 14px 0 0;
+  color: #aaa89f;
+  line-height: 1.6;
+  font-size: 0.88rem;
+}
+
+.scenarioBar {
+  display: grid;
+  grid-template-columns: 210px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid #2b302c;
+  border-radius: 9px;
+  background: #141715;
+}
+
+.scenarioBar > div:first-child strong {
+  display: block;
+  font-size: 0.94rem;
+}
+
+.scenarioBar .sectionKicker {
+  margin-bottom: 5px;
+}
+
+.scenarioButtons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scenarioButton,
+.scenarioActive,
+.engineButton {
+  border-radius: 7px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.scenarioButton,
+.scenarioActive {
+  min-height: 58px;
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid #2b302c;
+  background: #101210;
+  color: #f2f0e9;
+}
+
+.scenarioActive {
+  border-color: #947b90;
+  background: #241d23;
+}
+
+.scenarioButton strong,
+.scenarioActive strong,
+.scenarioButton span,
+.scenarioActive span {
+  display: block;
+}
+
+.scenarioButton strong,
+.scenarioActive strong {
+  font-size: 0.82rem;
+}
+
+.scenarioButton span,
+.scenarioActive span {
+  margin-top: 4px;
+  color: #aaa89f;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.engineButton {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #c9b98d;
+  background: #c9b98d;
+  color: #11130f;
+  font-weight: 700;
+}
+
+.engineButton:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.engineNotice,
+.previewNotice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+}
+
+.engineNotice {
+  border: 1px solid #344234;
+  background: #172018;
+}
+
+.previewNotice {
+  border: 1px solid #3c3625;
+  background: #211d15;
+}
+
+.engineNotice span,
+.previewNotice span {
+  font-weight: 700;
+}
+
+.engineNotice p,
+.previewNotice p {
+  margin: 0;
+  color: #aaa89f;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.72fr);
+  gap: 20px;
+  margin-top: 22px;
+}
+
+.passport,
+.gapCard,
+.decisionCard,
+.sacCard {
+  border: 1px solid #2b302c;
+  border-radius: 9px;
+  background: #141715;
+}
+
+.passport {
+  overflow: hidden;
+}
+
+.passportHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  padding: 24px 26px;
+  border-bottom: 1px solid #2b302c;
+}
+
+.passportHeader h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  letter-spacing: -0.035em;
+}
+
+.passportHeader p {
+  margin: 7px 0 0;
+  color: #aaa89f;
+  font-size: 0.82rem;
+}
+
+.originBadge {
+  min-width: 150px;
+  padding: 10px 12px;
+  border: 1px solid #2b302c;
+  border-radius: 7px;
+  background: #101210;
+}
+
+.originBadge span,
+.originBadge strong {
+  display: block;
+}
+
+.originBadge span {
+  color: #777f78;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.originBadge strong {
+  margin-top: 4px;
+  font-size: 0.8rem;
+}
+
+.readinessGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  border-bottom: 1px solid #2b302c;
+}
+
+.statusBlock,
+.coverageBlock {
+  padding: 25px 26px;
+}
+
+.statusBlock {
+  border-right: 1px solid #2b302c;
+}
+
+.statusBlock > span,
+.coverageBlock > span {
+  color: #aaa89f;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.statusBlock strong,
+.coverageBlock strong {
+  display: block;
+  margin-top: 9px;
+}
+
+.statusBlock strong {
+  max-width: 490px;
+  font-size: 1.48rem;
+  line-height: 1.25;
+  font-weight: 560;
+}
+
+.statusBlock p {
+  max-width: 600px;
+  margin: 11px 0 0;
+  color: #aaa89f;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.coverageBlock strong {
+  font-size: 2.45rem;
+  letter-spacing: -0.04em;
+}
+
+.coverageTrack {
+  height: 6px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #242824;
+}
+
+.coverageTrack span {
+  display: block;
+  height: 100%;
+  background: #c9b98d;
+}
+
+.coverageBlock small {
+  display: block;
+  margin-top: 9px;
+  color: #777f78;
+  line-height: 1.45;
+}
+
+.evidenceSection,
+.metricsSection {
+  padding: 25px 26px;
+}
+
+.evidenceSection {
+  border-bottom: 1px solid #2b302c;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.sectionHeading h3,
+.gapCard h3,
+.decisionCard h3,
+.sacCard h3 {
+  margin: 0;
+  font-size: 1.18rem;
+  font-weight: 560;
+}
+
+.sectionHeading .sectionKicker {
+  margin-bottom: 5px;
+}
+
+.neutralLegend {
+  color: #8c9aa4;
+  font-size: 0.7rem;
+}
+
+.evidenceList {
+  border-top: 1px solid #2b302c;
+}
+
+.evidenceRow {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 15px 0;
+  border-bottom: 1px solid #222722;
+}
+
+.evidenceRow > div strong,
+.evidenceRow > div span {
+  display: block;
+}
+
+.evidenceRow > div strong {
+  font-size: 0.84rem;
+}
+
+.evidenceRow > div span {
+  margin-top: 4px;
+  color: #aaa89f;
+  font-size: 0.75rem;
+}
+
+.stateDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.stateBadge {
+  min-width: 92px;
+  padding: 5px 8px;
+  border: 1px solid #2b302c;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.68rem;
+}
+
+.verified.stateDot {
+  background: #93aa8d;
+}
+
+.verified.stateBadge {
+  color: #a9bda5;
+  border-color: #314033;
+  background: #1c281d;
+}
+
+.partial.stateDot {
+  background: #c9b98d;
+}
+
+.partial.stateBadge {
+  color: #d5c89e;
+  border-color: #463d28;
+  background: #2a251a;
+}
+
+.unknown.stateDot {
+  background: #8c9aa4;
+}
+
+.unknown.stateBadge {
+  color: #aab5bc;
+  border-color: #354047;
+  background: #1c2327;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metricCard {
+  min-height: 132px;
+  padding: 16px;
+  border: 1px solid #2b302c;
+  border-radius: 7px;
+  background: #101210;
+}
+
+.metricCard span,
+.metricCard strong,
+.metricCard small {
+  display: block;
+}
+
+.metricCard span {
+  color: #aaa89f;
+  font-size: 0.72rem;
+}
+
+.metricCard strong {
+  margin-top: 16px;
+  font-size: 1.45rem;
+  letter-spacing: -0.03em;
+  font-weight: 560;
+}
+
+.metricCard small {
+  margin-top: 8px;
+  color: #777f78;
+  line-height: 1.45;
+}
+
+.sideColumn {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.gapCard,
+.decisionCard,
+.sacCard {
+  padding: 20px;
+}
+
+.gapCard ul {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gapCard li {
+  position: relative;
+  padding: 12px 0 12px 18px;
+  border-bottom: 1px solid #222722;
+  color: #c5c2b9;
+  font-size: 0.79rem;
+  line-height: 1.5;
+}
+
+.gapCard li::before {
+  content: "?";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  color: #8c9aa4;
+  font-weight: 700;
+}
+
+.emptyGap {
+  margin: 18px 0 0;
+  padding: 13px;
+  border: 1px solid #314033;
+  border-radius: 7px;
+  background: #1c281d;
+  color: #a9bda5;
+  font-size: 0.78rem;
+}
+
+.gapRule {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #2b302c;
+}
+
+.gapRule strong,
+.gapRule span {
+  display: block;
+}
+
+.gapRule strong {
+  color: #8c9aa4;
+  font-size: 0.76rem;
+}
+
+.gapRule span {
+  margin-top: 6px;
+  color: #aaa89f;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.decisionCard {
+  border-color: #3c3625;
+  background: #171710;
+}
+
+.decisionCard h3 {
+  max-width: 360px;
+  color: #d7c99e;
+  line-height: 1.3;
+}
+
+.decisionCard > p,
+.sacCard > p {
+  margin: 12px 0 0;
+  color: #aaa89f;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.nonDecisions {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.nonDecisions span {
+  padding: 8px 10px;
+  border: 1px solid #332e21;
+  border-radius: 6px;
+  color: #c7baa0;
+  font-size: 0.72rem;
+  background: #1e1b14;
+}
+
+.contractFlag {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #3c3625;
+}
+
+.contractFlag span,
+.contractFlag code {
+  display: block;
+}
+
+.contractFlag span {
+  color: #8e8979;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.contractFlag code {
+  margin-top: 6px;
+  color: #d7c99e;
+  font-size: 0.74rem;
+}
+
+.sacCard a {
+  display: inline-block;
+  margin-top: 15px;
+  color: #b0a0ad;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.footer {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 30px;
+  align-items: start;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #2b302c;
+  color: #777f78;
+  font-size: 0.72rem;
+}
+
+.footer strong,
+.footer span {
+  display: block;
+}
+
+.footer strong {
+  color: #aaa89f;
+}
+
+.footer span {
+  margin-top: 4px;
+}
+
+.footer p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.scenarioButton:focus-visible,
+.scenarioActive:focus-visible,
+.engineButton:focus-visible,
+.topnav a:focus-visible,
+.brand:focus-visible,
+.sacCard a:focus-visible {
+  outline: 2px solid #947b90;
+  outline-offset: 2px;
+}
+
+@media (max-width: 980px) {
+  .hero,
+  .workspace,
+  .readinessGrid,
+  .footer {
+    grid-template-columns: 1fr;
+  }
+
+  .scenarioBar {
+    grid-template-columns: 1fr;
+  }
+
+  .statusBlock {
+    border-right: 0;
+    border-bottom: 1px solid #2b302c;
+  }
+
+  .metricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .topbar {
+    align-items: flex-start;
+    padding: 15px 18px;
+  }
+
+  .brand > span:last-child,
+  .syntheticPill {
+    display: none;
+  }
+
+  .shell {
+    width: min(100% - 24px, 1240px);
+    padding-top: 34px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.4rem, 13vw, 4rem);
+  }
+
+  .principleCard {
+    min-height: 0;
+  }
+
+  .scenarioButtons,
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .passportHeader,
+  .sectionHeading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .originBadge {
+    width: 100%;
+  }
+
+  .passportHeader,
+  .statusBlock,
+  .coverageBlock,
+  .evidenceSection,
+  .metricsSection {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .evidenceRow {
+    grid-template-columns: 10px 1fr;
+  }
+
+  .stateBadge {
+    grid-column: 2;
+    width: fit-content;
+  }
+
+  .engineNotice,
+  .previewNotice {
+    grid-template-columns: 1fr;
+  }
+}
