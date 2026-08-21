@@ -1,4 +1,4 @@
-import type { MicroReadinessRequest, MicroReadinessResponse } from "./micro-types";
+import type { MicroReadinessRequest, MicroReadinessResponse } from "./types";
 
 const baseObservations = [
   { period: "2026-01", inflows: 11200, outflows: 8100 },
