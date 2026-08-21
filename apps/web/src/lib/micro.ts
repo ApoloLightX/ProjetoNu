@@ -1,4 +1,4 @@
-import type { MicroReadinessResponse, MicroReadinessStatus } from "./micro-types";
+import type { MicroReadinessResponse, MicroReadinessStatus } from "./types";
 
 export type MicroEvidenceState = "verified" | "partial" | "unknown";
 
