@@ -3,6 +3,8 @@ import type {
   CompanyRegistryProfile,
   CounterpartyRiskInput,
   EvidenceInput,
+  MicroReadinessRequest,
+  MicroReadinessResponse,
   MLBaselineEvaluation,
   MLBaselinePrediction,
   SACAssessment,
@@ -38,6 +40,17 @@ export async function runAssessment(input: CounterpartyRiskInput): Promise<SACAs
     body: JSON.stringify(input),
   });
   return jsonOrThrow<SACAssessment>(response, "Risk engine");
+}
+
+export async function runMicroReadiness(
+  input: MicroReadinessRequest,
+): Promise<MicroReadinessResponse> {
+  const response = await fetch(`${API_URL}/v1/micro/readiness`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return jsonOrThrow<MicroReadinessResponse>(response, "ATLAS Micro readiness");
 }
 
 export async function runMlPrediction(
