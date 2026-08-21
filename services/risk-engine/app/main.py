@@ -12,6 +12,8 @@ from .company_registry import (
     CompanyRegistryError,
     CompanyRegistryNotFound,
 )
+from .micro_readiness import assess_micro_readiness
+from .micro_schemas import MicroReadinessRequest, MicroReadinessResponse
 from .ml_baseline import evaluate_baseline, predict_baseline
 from .observability import bind_request_id, log_event, reset_request_id
 from .persistence import (
@@ -37,14 +39,14 @@ from .schemas import (
     SACAssessment,
 )
 
-APP_VERSION = "0.7.0"
+APP_VERSION = "0.8.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
 app = FastAPI(
-    title="ATLAS SAC Risk Engine",
+    title="ATLAS Risk Engine",
     version=APP_VERSION,
     description=(
-        "Experimental, explainable social, environmental and climate risk engine. "
+        "Experimental, explainable SAC risk and small-business evidence-readiness engine. "
         "Portfolio use only; not for real credit decisions."
     ),
 )
@@ -161,7 +163,7 @@ def _persist_ai_trace(
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "atlas-sac-risk-engine", "version": APP_VERSION}
+    return {"status": "ok", "service": "atlas-risk-engine", "version": APP_VERSION}
 
 
 @app.get("/v1/registry/cnpj/{cnpj}", response_model=CompanyRegistryProfile)
@@ -182,6 +184,11 @@ def registry_cnpj_lookup(cnpj: str) -> CompanyRegistryProfile:
 @app.post("/v1/assessments", response_model=SACAssessment)
 def create_assessment(payload: CounterpartyRiskInput) -> SACAssessment:
     return assess_counterparty(payload)
+
+
+@app.post("/v1/micro/readiness", response_model=MicroReadinessResponse)
+def micro_readiness(payload: MicroReadinessRequest) -> MicroReadinessResponse:
+    return assess_micro_readiness(payload)
 
 
 @app.get("/v1/ml/evaluation", response_model=MLBaselineEvaluation)
