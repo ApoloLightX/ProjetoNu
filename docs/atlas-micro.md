@@ -59,6 +59,33 @@ None of these states means approved, rejected, good borrower or bad borrower.
 
 The response contains `credit_decision_produced=false` as a deliberate API contract.
 
+## V8.1 Evidence Passport UI
+
+The `/micro` route turns the synthetic readiness contract into a product-facing Evidence Passport.
+
+It deliberately separates:
+
+1. **evidence coverage** from financial metrics;
+2. **known / partial / unknown** evidence state from risk severity;
+3. **descriptive observations** from a credit recommendation;
+4. **operational evidence** from the separate ATLAS SAC lens.
+
+Three synthetic scenarios are provided for review:
+
+- a complete six-month evidence packet;
+- a six-month packet with missing concentration and debt information;
+- a short three-month history.
+
+Changing from the complete packet to a packet with missing information must never create an implied adverse finding. The interface records the missing fields as data gaps and changes evidence readiness, not borrower risk.
+
+The visual experience repeats the same hard system boundary exposed by the API:
+
+```text
+credit_decision_produced = false
+```
+
+If a preview frontend is not connected to a V8-compatible backend, the page keeps an explicitly labeled synthetic fixture instead of pretending that a live engine result was produced.
+
 ## What V8 does not do
 
 V8 does not:
@@ -72,7 +99,8 @@ V8 does not:
 - ask users for bank passwords;
 - claim access to Open Finance APIs;
 - infer misconduct from CNPJ, CNAE or location;
-- train a model on real borrower outcomes.
+- train a model on real borrower outcomes;
+- combine a real company identity with invented financial observations and present the result as real analysis.
 
 ## Why the first endpoint is synthetic-only
 
@@ -89,15 +117,14 @@ Useful official references:
 - Banco Central, Open Finance customer benefits and consent flow: https://www.bcb.gov.br/estabilidadefinanceira/cliente-open-finance
 - Resolução Conjunta nº 1/2020: https://normativos.bcb.gov.br/Lists/Normativos/Attachments/51028/Res_Conj_0001_v5_P.pdf
 
-## Evidence Passport direction
-
-A later ATLAS Micro experience can present a portable evidence packet:
+## Evidence Passport model
 
 ```text
 ATLAS MICRO PASSPORT
 
 Business identity
-  CNPJ / legal name / activity / location
+  synthetic business identity in V8
+  future real identity only with an explicit provenance boundary
 
 Operational evidence
   cash-flow history
@@ -106,9 +133,9 @@ Operational evidence
   document/source provenance
 
 Evidence quality
-  verified / supplied / unknown
+  available / partial / unknown
   coverage
-  freshness
+  future freshness + verification metadata
 
 Observed metrics
   descriptive values only
@@ -117,10 +144,10 @@ Data gaps
   explicit unknowns
 
 Human review
-  reviewer conclusion + rationale
+  future reviewer conclusion + rationale
 ```
 
-The passport should distinguish three things that are frequently collapsed in weak underwriting interfaces:
+The passport distinguishes three things that are frequently collapsed in weak underwriting interfaces:
 
 1. **What is known**
 2. **What is observed**
@@ -157,12 +184,13 @@ The Production Readiness Guardian applies to this module from the first commit.
 - strict schema validation;
 - bounded input sizes;
 - no credit-decision output;
+- dedicated `/micro` Evidence Passport UI;
+- explicit unknown/data-gap presentation;
 - CI tests for missing-data semantics;
 - request correlation and structured logs inherited from V7.
 
 ### SOON
 
-- separate ATLAS Micro UI;
 - evidence-source provenance model;
 - authenticated reviewer accounts only when a real multi-user workflow exists;
 - passkeys as a candidate authentication method when accounts exist;
