@@ -2,7 +2,11 @@ import pytest
 from pydantic import ValidationError
 
 from app.micro_readiness import assess_micro_readiness
-from app.micro_schemas import MicroReadinessRequest, MicroReadinessStatus, MonthlyCashflowObservation
+from app.micro_schemas import (
+    MicroReadinessRequest,
+    MicroReadinessStatus,
+    MonthlyCashflowObservation,
+)
 
 
 def _observations(months: int) -> list[MonthlyCashflowObservation]:
