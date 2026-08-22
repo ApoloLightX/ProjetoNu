@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+  <title id="title">ATLAS evidence-first risk intelligence</title>
+  <desc id="desc">Portfolio banner showing ATLAS SAC and ATLAS Micro as two evidence-first modules with human oversight.</desc>
+  <rect width="1280" height="360" rx="22" fill="#0d0f0e"/>
+  <rect x="1" y="1" width="1278" height="358" rx="21" fill="none" stroke="#2b302c"/>
+  <rect x="64" y="64" width="4" height="54" rx="2" fill="#947b90"/>
+  <text x="88" y="87" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="20" font-weight="700" letter-spacing="3">ATLAS</text>
+  <text x="88" y="116" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14">Evidence-first risk intelligence</text>
+
+  <text x="64" y="184" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="38" font-weight="600">Evidence before narrative.</text>
+  <text x="64" y="224" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">Explicit uncertainty. Traceable reasoning. Human accountability.</text>
+
+  <rect x="64" y="270" width="330" height="46" rx="9" fill="#171a18" stroke="#374037"/>
+  <circle cx="88" cy="293" r="6" fill="#93aa8d"/>
+  <text x="106" y="299" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="600">ATLAS SAC</text>
+  <text x="196" y="299" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">social · environmental · climate</text>
+
+  <rect x="410" y="270" width="350" height="46" rx="9" fill="#171710" stroke="#463d28"/>
+  <circle cx="434" cy="293" r="6" fill="#c9b98d"/>
+  <text x="452" y="299" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="600">ATLAS MICRO</text>
+  <text x="562" y="299" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">small-business Evidence Passport</text>
+
+  <g transform="translate(840 52)">
+    <rect width="372" height="256" rx="16" fill="#141715" stroke="#2b302c"/>
+    <text x="26" y="38" fill="#947b90" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="1.6">SYSTEM BOUNDARIES</text>
+    <line x1="26" y1="58" x2="346" y2="58" stroke="#2b302c"/>
+    <text x="26" y="92" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14">Context</text>
+    <text x="346" y="92" fill="#8c9aa4" text-anchor="end" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">≠ misconduct</text>
+    <text x="26" y="128" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14">Missing information</text>
+    <text x="346" y="128" fill="#c9b98d" text-anchor="end" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">≠ adverse evidence</text>
+    <text x="26" y="164" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14">Generative AI</text>
+    <text x="346" y="164" fill="#947b90" text-anchor="end" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">≠ decision owner</text>
+    <line x1="26" y1="186" x2="346" y2="186" stroke="#2b302c"/>
+    <text x="26" y="222" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12">evidence → models → challenge → human review</text>
+  </g>
+</svg>
