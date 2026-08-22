@@ -1,148 +1,189 @@
-# ATLAS SAC — Architecture
+# ATLAS — Architecture
 
-## Goal
+## Purpose
 
-Build a traceable research platform for SAC risk assessment that separates **data**, **deterministic logic**, **statistical/ML signals**, **LLM-assisted interpretation** and **human review**.
+ATLAS is an evidence-first research platform with two related product lenses:
 
-The architecture intentionally prevents the LLM from becoming the source of truth.
+- **ATLAS SAC** organizes social, environmental and climate risk evidence for corporate counterparties.
+- **ATLAS Micro** organizes small-business operational evidence into an Evidence Passport before any credit judgment is considered.
 
-## Logical flow
+The shared architectural rule is simple:
+
+> **Evidence and explicit uncertainty come before interpretation. Human accountability remains outside the model.**
+
+ATLAS is an independent portfolio/research project. It does not reproduce any financial institution's internal architecture or decision process.
+
+## System map
 
 ```text
-Counterparty
-    |
-    v
-Data intake / enrichment
-    |
-    +--> sector and geography features
-    +--> public/synthetic evidence
-    +--> uploaded evidence (future)
-    |
-    v
-Feature layer
-    |
-    +--> inherent risk features
-    +--> observed-risk features
-    +--> evidence completeness
-    |
-    +------------------+
-    |                  |
-    v                  v
-Rules engine       Statistical / ML model
-    |                  |
-    +---------+--------+
-              |
-              v
-        Risk synthesis
-              |
-      +-------+-------+
-      |               |
-      v               v
-Gemini analyst   Groq reviewer
-      |               |
-      +-------+-------+
-              |
-              v
-       disagreement gate
-              |
-              v
-         Human review
-              |
-              v
-       immutable run record
+Browser / Next.js
+│
+├── ATLAS SAC workstation
+│   ├── CNPJ-first context
+│   ├── synthetic SAC simulation
+│   ├── evidence trace
+│   └── human-review surface
+│
+└── ATLAS Micro Evidence Passport
+    ├── synthetic evidence scenarios
+    ├── evidence coverage
+    ├── descriptive operational metrics
+    └── explicit data gaps
+            │
+            ▼
+       FastAPI risk engine
+            │
+    ┌───────┴───────────────────────────────┐
+    │                                       │
+    │ ATLAS SAC                             │ ATLAS Micro
+    │                                       │
+    ├─ public registry connector            ├─ synthetic-only schema boundary
+    │   └─ risk_signal = false              ├─ readiness engine
+    ├─ deterministic rules                  ├─ evidence coverage
+    ├─ synthetic Logistic Regression        ├─ descriptive metrics
+    ├─ Evidence Trace                       └─ credit_decision_produced = false
+    ├─ Gemini analyst
+    ├─ Groq independent reviewer
+    └─ human-review gate
+            │
+            ▼
+       Supabase / PostgreSQL
+       ├─ immutable assessment snapshots
+       ├─ evidence items
+       ├─ AI run traces
+       └─ human reviews
 ```
 
-## Boundary rules
+A static presentation version lives at [`assets/architecture.svg`](../assets/architecture.svg).
 
-### 1. Inherent risk
+## ATLAS SAC data flow
 
-Describes exposure related to sector, geography and climate context. It **must not be represented as proof of misconduct by a company**.
+```text
+CNPJ / synthetic counterparty input
+        ↓
+public registry enrichment
+        ↓
+identity + CNAE + location + provenance
+        │
+        └── hard boundary: registry context is not adverse evidence
+        ↓
+deterministic SAC rules
+        ↓
+separate inherent / observed dimensions
+        ↓
+synthetic statistical baseline
+        ↓
+evidence trace
+        ↓
+Gemini structured analyst
+        ↓
+Groq independent challenge
+        ↓
+human-review gate
+        ↓
+optional immutable persistence / replay
+```
 
-### 2. Observed risk
+### SAC authority boundaries
 
-Uses company-specific evidence/signals. Observed risk remains separate from inherent risk so a high-risk sector does not become an accusation and a low-risk sector cannot hide material observed evidence.
+1. **Inherent exposure is not observed misconduct.** Sector, geography and climate context cannot become an accusation about a company.
+2. **Registry context is not a risk signal.** The CNPJ connector preserves `risk_signal=false`.
+3. **Missing evidence is uncertainty.** Evidence completeness affects confidence/review requirements, not the synthetic ML feature set.
+4. **The deterministic layer owns the score.** LLM output cannot rewrite deterministic scores or remove a mandatory human-review requirement.
+5. **AI claims must be grounded.** Structured findings must cite allowed deterministic, ML or evidence references.
+6. **Provider failure fails safely.** AI can degrade to the deterministic path instead of inventing a substitute conclusion.
 
-### 3. Confidence
+## ATLAS Micro data flow
 
-Confidence reflects evidence sufficiency and data quality, not certainty that a company is "good" or "bad". Low completeness can force review even with a low numerical risk result.
+```text
+synthetic small-business evidence packet
+        ↓
+schema validation
+        ↓
+monthly operational observations
+        ↓
+┌────────────────────┬──────────────────────┐
+│ descriptive metrics│ evidence availability│
+└────────────────────┴──────────────────────┘
+        ↓
+explicit data gaps
+        ↓
+evidence-readiness state
+        ↓
+Evidence Passport
+        ↓
+future human review
+```
 
-### 4. LLM layer
+ATLAS Micro V8 is deliberately **not a credit model**. Its API contract states:
 
-LLMs receive structured evidence and may:
+```text
+credit_decision_produced = false
+```
 
-- summarize evidence;
-- identify contradictions;
-- propose an interpretation;
-- critique another model's interpretation.
+The readiness states describe whether the evidence packet can support deeper review. They do not mean approved, denied, low risk or high risk.
 
-LLMs may not:
+## Why the two modules stay separate
 
-- silently invent missing evidence;
-- replace deterministic risk inputs;
-- make a real credit decision;
-- convert sector exposure into allegations about a specific company.
+Operational resilience and SAC context can both matter while describing different facts. A small business may have stable operational evidence and high inherent climate exposure at the same time.
 
-### 5. Human review
+ATLAS therefore avoids collapsing everything into one opaque number.
 
-V1 review gates include:
+```text
+ATLAS Micro                         ATLAS SAC
+operational evidence               social / environmental / climate evidence
+coverage + unknowns                inherent + observed exposure
+readiness for review               risk + confidence + review gate
+          │                                  │
+          └──────────── evidence discipline ─┘
+```
 
-- high consolidated risk;
-- high material observed risk;
-- insufficient evidence;
-- future model disagreement.
+## Persistence and replay
 
-## Services
+The Supabase/PostgreSQL persistence layer keeps decision-relevant history inspectable instead of silently recomputing old results with future methodology.
 
-### `apps/web`
+Persisted assessment records include enough versioned context to answer:
 
-Next.js / TypeScript frontend. Planned after the deterministic engine is stable.
-
-### `services/risk-engine`
-
-FastAPI service responsible for:
-
-- schema validation;
-- feature processing;
-- deterministic scoring;
-- future statistical/ML inference;
-- future AI orchestration;
-- assessment response contracts.
-
-### `supabase`
-
-PostgreSQL persistence for:
-
-- counterparties;
-- evidence;
-- immutable assessment snapshots;
-- human reviews;
-- AI-run metadata.
-
-## Replayability
-
-Each future persisted assessment should keep enough version metadata to answer:
-
-- Which inputs were used?
-- Which methodology version was used?
-- Which model/ruleset version was used?
+- Which input snapshot was used?
+- Which methodology version produced the result?
 - Which AI provider/model/prompt version participated?
-- Was a human review required?
-- Did the reviewer confirm or override the recommendation?
+- Which evidence references supported the AI path?
+- Was human review required?
+- What did the human reviewer record separately from the original model output?
 
-## Security / privacy baseline
+Human review is stored separately from the original assessment so a reviewer does not erase history when disagreeing with automation.
 
-- No API keys committed to Git.
-- No real confidential credit data in the public repository.
-- Synthetic demo data labeled explicitly.
-- AI run persistence stores metadata and structured outputs, not secrets.
-- Service-role credentials stay server-side only.
-- Public demo must not imply a real person's or company's risk classification.
+## Production-readiness layer
 
-## Non-goals for V1
+V7 introduced controls appropriate to the current managed/serverless architecture:
 
-- production credit underwriting;
-- regulatory compliance certification;
-- automated adverse credit decisions;
-- legal conclusions;
-- exhaustive Brazilian environmental-data integration;
-- replication of any financial institution's internal process.
+- explicit remote-call timeouts;
+- bounded retry/backoff with jitter for retry-safe public-data GETs;
+- `X-Request-ID` correlation;
+- structured request/dependency telemetry without raw prompts or secrets;
+- conservative browser/API security headers;
+- evidence payload bounds;
+- CI quality gates;
+- database RLS/grant/index inspection;
+- recovery documentation;
+- dependency monitoring.
+
+Shared/platform rate limiting remains a tracked production gap. ATLAS does not claim it exists until it is actually configured and verified.
+
+## Deliberate non-architecture
+
+The project intentionally does **not** use Kubernetes, sharding, distributed locks, Saga orchestration, active-active multi-region or a custom service mesh today.
+
+Those mechanisms would add operational failure modes without solving a measured current problem. Each should be reconsidered only when traffic, reliability targets, data volume or product requirements justify it.
+
+See [`docs/decisions.md`](decisions.md) for the decision record and revisit triggers.
+
+## Security and privacy boundaries
+
+- No secrets are committed to Git.
+- Privileged Supabase credentials remain server-side.
+- The public project does not ingest confidential borrower data.
+- V8 ATLAS Micro rejects non-synthetic financial inputs at the schema boundary.
+- Real CNPJ context is never combined with invented financial observations and presented as a real-company analysis.
+- No bank credential collection or simulated Open Finance scraping exists.
+- Public demo outputs are research/portfolio demonstrations, not financial or legal advice.
