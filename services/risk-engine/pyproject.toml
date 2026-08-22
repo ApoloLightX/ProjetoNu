@@ -1,7 +1,7 @@
 [project]
 name = "atlas-sac-risk-engine"
-version = "0.7.0"
-description = "Transparent SAC risk scoring engine for the ATLAS SAC portfolio project"
+version = "0.8.0"
+description = "Transparent SAC risk and small-business evidence-readiness engine for ATLAS"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.116,<1.0",
