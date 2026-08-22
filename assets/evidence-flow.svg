@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="470" viewBox="0 0 1280 470" role="img" aria-labelledby="title desc">
+  <title id="title">ATLAS evidence flow</title>
+  <desc id="desc">Diagram showing how context, observed evidence and unknown information are kept separate before models and human review.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#777f78"/></marker>
+  </defs>
+  <rect width="1280" height="470" rx="22" fill="#0d0f0e"/>
+  <rect x="1" y="1" width="1278" height="468" rx="21" fill="none" stroke="#2b302c"/>
+  <text x="52" y="58" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="25" font-weight="650">Evidence state is not risk severity</text>
+  <text x="52" y="84" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14">ATLAS keeps what we know, what we observed and what remains unknown as different facts.</text>
+
+  <rect x="52" y="126" width="330" height="160" rx="13" fill="#171a18" stroke="#354047"/>
+  <text x="76" y="158" fill="#8c9aa4" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="1.3">CONTEXT</text>
+  <text x="76" y="190" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" font-weight="600">Identity & exposure</text>
+  <text x="76" y="220" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">CNPJ · CNAE · geography · climate context</text>
+  <text x="76" y="250" fill="#8c9aa4" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">helps explain exposure</text>
+  <text x="76" y="271" fill="#aab5bc" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="600">does not prove misconduct</text>
+
+  <rect x="475" y="126" width="330" height="160" rx="13" fill="#172018" stroke="#374037"/>
+  <text x="499" y="158" fill="#93aa8d" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="1.3">OBSERVED</text>
+  <text x="499" y="190" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" font-weight="600">Company-specific signals</text>
+  <text x="499" y="220" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">enumerated evidence · events · validated signals</text>
+  <text x="499" y="250" fill="#93aa8d" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">may support a risk conclusion</text>
+  <text x="499" y="271" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">only with provenance and scope</text>
+
+  <rect x="898" y="126" width="330" height="160" rx="13" fill="#211d15" stroke="#463d28"/>
+  <text x="922" y="158" fill="#c9b98d" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="1.3">UNKNOWN</text>
+  <text x="922" y="190" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="17" font-weight="600">Evidence gap</text>
+  <text x="922" y="220" fill="#aaa89f" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">missing · stale · unverified · unavailable</text>
+  <text x="922" y="250" fill="#c9b98d" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">reduces confidence/readiness</text>
+  <text x="922" y="271" fill="#f2f0e9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" font-weight="600">never invents a negative fact</text>
+
+  <line x1="217" y1="286" x2="217" y2="330" stroke="#777f78" marker-end="url(#arrow)"/>
+  <line x1="640" y1="286" x2="640" y2="330" stroke="#777f78" marker-end="url(#arrow)"/>
+  <line x1="1063" y1="286" x2="1063" y2="330" stroke="#777f78" marker-end="url(#arrow)"/>
+
+  <rect x="210" y="340" width="860" height="66" rx="12" fill="#181a19" stroke="#947b90"/>
+  <text x="640" y="366" fill="#947b90" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="1.4">MODEL / RULE LAYER</text>
+  <text x="640" y="391" fill="#f2f0e9" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14">Preserve classification → compute or describe → expose uncertainty → challenge → human review</text>
+
+  <text x="640" y="443" fill="#aaa89f" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13">ATLAS SAC: missing evidence affects confidence · ATLAS Micro: missing evidence affects readiness</text>
+</svg>
