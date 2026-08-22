@@ -1,9 +1,12 @@
+import json
 from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+MAX_EVIDENCE_PAYLOAD_BYTES = 64 * 1024
 
 
 class RiskBand(str, Enum):
@@ -64,6 +67,16 @@ class EvidenceInput(BaseModel):
     observed_at: datetime | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
     is_synthetic: bool = True
+
+    @field_validator("payload")
+    @classmethod
+    def evidence_payload_must_be_bounded(cls, value: dict[str, Any]) -> dict[str, Any]:
+        encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        if len(encoded) > MAX_EVIDENCE_PAYLOAD_BYTES:
+            raise ValueError(
+                f"Evidence payload must be at most {MAX_EVIDENCE_PAYLOAD_BYTES} bytes."
+            )
+        return value
 
 
 class PersistAssessmentRequest(BaseModel):

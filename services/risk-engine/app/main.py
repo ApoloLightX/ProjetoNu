@@ -1,7 +1,9 @@
 import os
-from uuid import UUID
+import re
+import time
+from uuid import UUID, uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .ai_review import run_ai_assessment
@@ -11,6 +13,7 @@ from .company_registry import (
     CompanyRegistryNotFound,
 )
 from .ml_baseline import evaluate_baseline, predict_baseline
+from .observability import bind_request_id, log_event, reset_request_id
 from .persistence import (
     PersistenceError,
     PersistenceNotConfigured,
@@ -34,9 +37,12 @@ from .schemas import (
     SACAssessment,
 )
 
+APP_VERSION = "0.7.0"
+REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+
 app = FastAPI(
     title="ATLAS SAC Risk Engine",
-    version="0.6.0",
+    version=APP_VERSION,
     description=(
         "Experimental, explainable social, environmental and climate risk engine. "
         "Portfolio use only; not for real credit decisions."
@@ -54,8 +60,52 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-Request-ID"],
+    expose_headers=["X-Request-ID"],
 )
+
+
+def _request_id(value: str | None) -> str:
+    if value and REQUEST_ID_PATTERN.fullmatch(value):
+        return value
+    return uuid4().hex
+
+
+@app.middleware("http")
+async def request_context(request: Request, call_next):
+    request_id = _request_id(request.headers.get("x-request-id"))
+    request.state.request_id = request_id
+    token = bind_request_id(request_id)
+    started = time.perf_counter()
+
+    try:
+        try:
+            response = await call_next(request)
+        except Exception:
+            duration_ms = round((time.perf_counter() - started) * 1000, 2)
+            log_event(
+                "request_failed",
+                level=40,
+                exc_info=True,
+                method=request.method,
+                path=request.url.path,
+                duration_ms=duration_ms,
+            )
+            raise
+
+        duration_ms = round((time.perf_counter() - started) * 1000, 2)
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        log_event(
+            "request_completed",
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration_ms=duration_ms,
+        )
+        return response
+    finally:
+        reset_request_id(token)
 
 
 def _repository() -> SupabaseRestRepository:
@@ -111,7 +161,7 @@ def _persist_ai_trace(
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "atlas-sac-risk-engine", "version": "0.6.0"}
+    return {"status": "ok", "service": "atlas-sac-risk-engine", "version": APP_VERSION}
 
 
 @app.get("/v1/registry/cnpj/{cnpj}", response_model=CompanyRegistryProfile)

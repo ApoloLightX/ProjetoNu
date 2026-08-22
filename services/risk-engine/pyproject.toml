@@ -1,6 +1,6 @@
 [project]
 name = "atlas-sac-risk-engine"
-version = "0.3.0"
+version = "0.7.0"
 description = "Transparent SAC risk scoring engine for the ATLAS SAC portfolio project"
 requires-python = ">=3.11"
 dependencies = [
