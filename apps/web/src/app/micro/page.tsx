@@ -40,8 +40,10 @@ export default function AtlasMicroPage() {
 
   const evidenceItems = useMemo(() => buildEvidenceItems(result), [result]);
   const metrics = result.metrics;
+  const coveragePercent = Math.round(result.evidence_coverage * 100);
 
   function selectScenario(next: MicroDemoKey) {
+    if (loading) return;
     setScenario(next);
     setResult(MICRO_DEMO_FALLBACKS[next]);
     setOrigin("fixture");
@@ -57,13 +59,11 @@ export default function AtlasMicroPage() {
       setResult(response);
       setOrigin("engine");
       setEngineMessage("Resultado calculado pelo motor ATLAS Micro V8.");
-    } catch (error) {
+    } catch {
       setResult(MICRO_DEMO_FALLBACKS[scenario]);
       setOrigin("fixture");
       setEngineMessage(
-        error instanceof Error
-          ? `O preview visual foi mantido porque o backend V8 deste deployment não respondeu: ${error.message}`
-          : "O preview visual foi mantido porque o backend V8 não respondeu.",
+        "O preview visual foi preservado porque este deployment não conseguiu consultar um backend V8 compatível.",
       );
     } finally {
       setLoading(false);
@@ -110,7 +110,9 @@ export default function AtlasMicroPage() {
           <div className={styles.scenarioButtons}>
             {scenarios.map((item) => (
               <button
+                aria-pressed={scenario === item.key}
                 className={scenario === item.key ? styles.scenarioActive : styles.scenarioButton}
+                disabled={loading}
                 key={item.key}
                 type="button"
                 onClick={() => selectScenario(item.key)}
@@ -120,13 +122,23 @@ export default function AtlasMicroPage() {
               </button>
             ))}
           </div>
-          <button className={styles.engineButton} type="button" disabled={loading} onClick={executeEngine}>
+          <button
+            aria-busy={loading}
+            className={styles.engineButton}
+            type="button"
+            disabled={loading}
+            onClick={executeEngine}
+          >
             {loading ? "Executando…" : "Executar no motor V8"}
           </button>
         </section>
 
         {engineMessage ? (
-          <div className={origin === "engine" ? styles.engineNotice : styles.previewNotice}>
+          <div
+            aria-live="polite"
+            className={origin === "engine" ? styles.engineNotice : styles.previewNotice}
+            role="status"
+          >
             <span>{origin === "engine" ? "Motor V8" : "Preview protegido"}</span>
             <p>{engineMessage}</p>
           </div>
@@ -155,8 +167,15 @@ export default function AtlasMicroPage() {
               <div className={styles.coverageBlock}>
                 <span>Cobertura de evidências</span>
                 <strong>{formatPercent(result.evidence_coverage)}</strong>
-                <div className={styles.coverageTrack} aria-hidden="true">
-                  <span style={{ width: `${Math.round(result.evidence_coverage * 100)}%` }} />
+                <div
+                  aria-label="Cobertura de evidências"
+                  aria-valuemax={100}
+                  aria-valuemin={0}
+                  aria-valuenow={coveragePercent}
+                  className={styles.coverageTrack}
+                  role="progressbar"
+                >
+                  <span style={{ width: `${coveragePercent}%` }} />
                 </div>
                 <small>Disponibilidade do pacote, não probabilidade de inadimplência.</small>
               </div>
