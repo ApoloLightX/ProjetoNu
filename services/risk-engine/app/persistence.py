@@ -75,6 +75,22 @@ class SupabaseRestRepository:
         if self._owns_client:
             self.client.close()
 
+    def healthcheck(self) -> None:
+        """Touch PostgREST so readiness reflects the real database dependency."""
+        try:
+            response = self.client.get(
+                f"{self.base_url}/rest/v1/assessment_runs",
+                headers=self.headers,
+                params={"select": "id", "limit": "1"},
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise PersistenceError(
+                f"Supabase healthcheck failed with HTTP {exc.response.status_code}."
+            ) from exc
+        except httpx.RequestError as exc:
+            raise PersistenceError("Supabase healthcheck is unavailable.") from exc
+
     def _rpc(self, function_name: str, payload: dict) -> object:
         try:
             response = self.client.post(
