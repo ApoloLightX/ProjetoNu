@@ -163,7 +163,35 @@ def _persist_ai_trace(
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "atlas-risk-engine", "version": APP_VERSION}
+    database_status = "not_configured"
+    try:
+        repository = SupabaseRestRepository.from_env()
+    except PersistenceNotConfigured:
+        repository = None
+    else:
+        try:
+            repository.healthcheck()
+        except PersistenceError as exc:
+            log_event(
+                "dependency_healthcheck_failed",
+                level=40,
+                dependency="supabase",
+                error_type=type(exc).__name__,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="Supabase dependency healthcheck failed.",
+            ) from exc
+        finally:
+            repository.close()
+        database_status = "ok"
+
+    return {
+        "status": "ok",
+        "service": "atlas-risk-engine",
+        "version": APP_VERSION,
+        "database": database_status,
+    }
 
 
 @app.get("/v1/registry/cnpj/{cnpj}", response_model=CompanyRegistryProfile)
