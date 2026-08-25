@@ -10,7 +10,28 @@ import type {
   SACAssessment,
 } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_RISK_API_URL ?? "http://localhost:8000";
+const LOCAL_API_URL = "http://localhost:8000";
+const VERIFIED_PRODUCTION_API_URL = "https://atlas-sac-web.vercel.app";
+const STALE_PRODUCTION_API_ALIAS = "https://atlas-sac-api.vercel.app";
+
+export function resolveApiUrl(
+  configuredUrl: string | undefined = process.env.NEXT_PUBLIC_RISK_API_URL,
+  nodeEnv: string | undefined = process.env.NODE_ENV,
+): string {
+  const configured = configuredUrl?.trim().replace(/\/+$/, "");
+
+  if (!configured) {
+    return nodeEnv === "production" ? VERIFIED_PRODUCTION_API_URL : LOCAL_API_URL;
+  }
+
+  if (configured === STALE_PRODUCTION_API_ALIAS) {
+    return VERIFIED_PRODUCTION_API_URL;
+  }
+
+  return configured;
+}
+
+const API_URL = resolveApiUrl();
 
 async function jsonOrThrow<T>(response: Response, context: string): Promise<T> {
   if (!response.ok) {

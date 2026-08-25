@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  API_URL: https://atlas-sac-web.vercel.app
+  WEB_URL: https://atlas-sac-ui.vercel.app
+
 jobs:
   heartbeat:
     runs-on: ubuntu-latest
@@ -26,7 +30,7 @@ jobs:
               --retry-all-errors \
               --connect-timeout 10 \
               --max-time 30 \
-              https://atlas-sac-api.vercel.app/health
+              "$API_URL/health"
             echo
             if [ "$attempt" -lt 3 ]; then sleep 3; fi
           done
@@ -41,7 +45,7 @@ jobs:
             --retry-all-errors \
             --connect-timeout 10 \
             --max-time 45 \
-            https://atlas-sac-api.vercel.app/v1/ml/evaluation \
+            "$API_URL/v1/ml/evaluation" \
             > /dev/null
 
       - name: Verify public web entry points
@@ -54,7 +58,7 @@ jobs:
             --retry-all-errors \
             --connect-timeout 10 \
             --max-time 30 \
-            https://atlas-sac-ui.vercel.app \
+            "$WEB_URL" \
             > /dev/null
           curl \
             --fail \
@@ -64,5 +68,5 @@ jobs:
             --retry-all-errors \
             --connect-timeout 10 \
             --max-time 30 \
-            https://atlas-sac-ui.vercel.app/micro \
+            "$WEB_URL/micro" \
             > /dev/null
