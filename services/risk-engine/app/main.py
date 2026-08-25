@@ -41,6 +41,8 @@ from .schemas import (
 
 APP_VERSION = "0.8.0"
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
+PUBLIC_WEB_ORIGIN = "https://atlas-sac-ui.vercel.app"
+LOCAL_WEB_ORIGIN = "http://localhost:3000"
 
 app = FastAPI(
     title="ATLAS Risk Engine",
@@ -51,11 +53,12 @@ app = FastAPI(
     ),
 )
 
-allowed_origins = [
+configured_origins = {
     origin.strip()
-    for origin in os.environ.get("RISK_ENGINE_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    for origin in os.environ.get("RISK_ENGINE_ALLOWED_ORIGINS", "").split(",")
     if origin.strip()
-]
+}
+allowed_origins = sorted({LOCAL_WEB_ORIGIN, PUBLIC_WEB_ORIGIN, *configured_origins})
 
 app.add_middleware(
     CORSMiddleware,
