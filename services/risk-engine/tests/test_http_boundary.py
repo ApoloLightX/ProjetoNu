@@ -76,3 +76,18 @@ def test_request_id_rejects_untrusted_shape(monkeypatch):
 
     assert response.status_code == 200
     assert response.headers["x-request-id"] != "contains spaces"
+
+
+def test_public_web_origin_can_preflight_json_post():
+    response = client.options(
+        "/v1/assessments",
+        headers={
+            "Origin": "https://atlas-sac-ui.vercel.app",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-request-id",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://atlas-sac-ui.vercel.app"
+    assert "POST" in response.headers["access-control-allow-methods"]
