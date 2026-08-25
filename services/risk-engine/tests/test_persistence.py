@@ -2,10 +2,11 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.persistence import SupabaseRestRepository, stable_external_ref
+from app.persistence import PersistenceError, SupabaseRestRepository, stable_external_ref
 from app.risk_engine import METHODOLOGY_VERSION, assess_counterparty
 from app.schemas import (
     AIProviderRun,
@@ -56,6 +57,43 @@ def test_generated_external_ref_is_stable_and_does_not_expose_company_name():
     assert first == second
     assert first.startswith("synthetic:")
     assert "empresa" not in first
+
+
+def test_healthcheck_touches_assessment_runs_without_requiring_rows():
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["path"] = request.url.path
+        captured["query"] = str(request.url.query)
+        return httpx.Response(200, json=[])
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    repository = SupabaseRestRepository(
+        "https://atlas.example.supabase.co",
+        "test-service-role",
+        client=client,
+    )
+
+    repository.healthcheck()
+
+    assert captured["path"].endswith("/rest/v1/assessment_runs")
+    assert "select=id" in captured["query"]
+    assert "limit=1" in captured["query"]
+
+
+def test_healthcheck_fails_closed_on_database_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"message": "paused"})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    repository = SupabaseRestRepository(
+        "https://atlas.example.supabase.co",
+        "test-service-role",
+        client=client,
+    )
+
+    with pytest.raises(PersistenceError, match="healthcheck failed with HTTP 503"):
+        repository.healthcheck()
 
 
 def test_persist_assessment_calls_atomic_rpc_with_snapshots():

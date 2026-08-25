@@ -31,6 +31,8 @@ SUPABASE_SERVICE_ROLE_KEY=<server-only-secret>
 
 `GEMINI_API_KEY`, `GROQ_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` must never use a `NEXT_PUBLIC_` prefix or appear in browser code.
 
+The Vercel function is explicitly capped at 60 seconds in `services/risk-engine/vercel.json`. Treat that as a budget, not as permission for an interactive AI request to consume the full minute. Provider latency is logged so slow paths can be measured before changing the budget or architecture.
+
 Smoke checks after deploy:
 
 ```text
@@ -40,7 +42,24 @@ GET  /v1/ml/evaluation
 POST /v1/assessments
 ```
 
+`GET /health` is dependency-aware in deployed environments. When Supabase is configured it performs a minimal PostgREST query against `assessment_runs`; a failed database probe returns HTTP 503 instead of reporting a false healthy state. Local/test environments without persistence configured remain usable and report `database=not_configured`.
+
 AI and persistence endpoints can degrade safely when their secrets/services are not configured, but the public portfolio should only advertise them as live after explicit smoke tests.
+
+## Portfolio availability heartbeat
+
+The public portfolio can be reviewed days or weeks after the application is submitted. `.github/workflows/heartbeat.yml` therefore performs a small daily availability check while the portfolio is under active review:
+
+```text
+API /health -> real Supabase dependency probe
+API /v1/ml/evaluation -> deterministic/ML warm path
+Web / -> public SAC entry point
+Web /micro -> Evidence Passport entry point
+```
+
+The workflow deliberately fails when an endpoint is unavailable. It does not use `|| true`, because a green heartbeat that hides a broken portfolio would be worse than no heartbeat at all.
+
+The heartbeat is an availability safeguard for the portfolio period, not a substitute for production monitoring or an uptime SLA. It should be removed or revisited when the hosting plan, traffic profile or product lifecycle changes.
 
 ## Project B — Web Console
 
@@ -76,6 +95,7 @@ Use a dedicated Supabase project for ATLAS SAC. Apply migrations in order:
 supabase/migrations/0001_init.sql
 supabase/migrations/0002_persistence_security.sql
 supabase/migrations/0003_ai_run_trace.sql
+supabase/migrations/0004_human_review_index.sql
 ```
 
 Then verify:
@@ -92,12 +112,13 @@ Recommended order:
 
 1. Create/apply the dedicated Supabase project.
 2. Deploy the FastAPI risk engine with server secrets.
-3. Smoke-test deterministic and ML endpoints.
-4. Smoke-test Gemini/Groq with a synthetic assessment.
-5. Deploy the Next.js web console with `NEXT_PUBLIC_RISK_API_URL` pointing at the backend.
-6. Set the final frontend origin in backend CORS.
-7. Re-run the end-to-end demo from a clean browser session.
-8. Only then place the public demo URL in the README/CV.
+3. Smoke-test `/health` and confirm `database=ok` in the deployed environment.
+4. Smoke-test deterministic and ML endpoints.
+5. Smoke-test Gemini/Groq with a synthetic assessment and inspect provider latency.
+6. Deploy the Next.js web console with `NEXT_PUBLIC_RISK_API_URL` pointing at the backend.
+7. Set the final frontend origin in backend CORS.
+8. Re-run the end-to-end demo from a clean browser session and a mobile device.
+9. Only then place the public demo URL in the README/CV.
 
 ## Demo integrity rule
 
