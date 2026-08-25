@@ -6,11 +6,20 @@
 
 **Evidence-first risk intelligence with explicit uncertainty and human oversight.**
 
-[![CI](https://github.com/ApoloLightX/ProjetoNu/actions/workflows/ci.yml/badge.svg)](https://github.com/ApoloLightX/ProjetoNu/actions/workflows/ci.yml)
+<!-- README_DEMO_MEDIA_START
+<p align="center">
+  <img src="assets/demo.gif" alt="ATLAS SAC and ATLAS Micro real product demo" width="100%" />
+</p>
+<p align="center">
+  <a href="REPLACE_WITH_FINAL_DEMO_VIDEO_URL"><strong>Watch the 60–90 second product demo</strong></a>
+</p>
+README_DEMO_MEDIA_END -->
 
 **Live ATLAS SAC:** https://atlas-sac-ui.vercel.app  
 **Live ATLAS Micro:** https://atlas-sac-ui.vercel.app/micro  
-**Risk engine:** https://atlas-sac-api.vercel.app
+**Risk engine:** https://atlas-sac-web.vercel.app
+
+[![CI](https://github.com/ApoloLightX/ProjetoNu/actions/workflows/ci.yml/badge.svg)](https://github.com/ApoloLightX/ProjetoNu/actions/workflows/ci.yml)
 
 ATLAS is an independent engineering research project exploring a deceptively difficult question:
 
@@ -22,6 +31,14 @@ The project now answers that question through two related product lenses.
 |---|---|---|
 | **ATLAS SAC** | What social, environmental and climate risk can the available evidence support? | Real registry context + clearly synthetic SAC simulation |
 | **ATLAS Micro** | What can the available evidence actually prove about a small business before anyone judges it? | Synthetic-only Evidence Passport, no credit decision |
+
+## Demo in 3 steps
+
+A reviewer should not need to discover the product by accident.
+
+1. **Open [ATLAS SAC](https://atlas-sac-ui.vercel.app)** and inspect the evidence-first risk workstation.
+2. **Jump to the [Evidence Trace](https://atlas-sac-ui.vercel.app/#trilha)** and follow conclusion → context/signals → methodological boundaries.
+3. **Open [ATLAS Micro](https://atlas-sac-ui.vercel.app/micro)**, select **Com lacunas**, run the V8 engine and verify that coverage falls while missing fields remain unknown and `credit_decision_produced = false`.
 
 ## 30-second overview
 
@@ -283,6 +300,8 @@ ATLAS uses production-readiness controls that solve current failure modes:
 - bounded retry with exponential backoff + jitter for retry-safe registry GETs;
 - request correlation with `X-Request-ID`;
 - structured request/dependency telemetry without secrets or raw prompts;
+- dependency-aware `/health` that verifies the configured Supabase path instead of reporting false health;
+- a daily portfolio heartbeat that exercises API/database readiness, the deterministic ML path and both public web entry points during the review window;
 - conservative security headers;
 - bounded evidence payloads;
 - CI typecheck/lint/test/build gates;
@@ -356,7 +375,8 @@ Behavioral tests protect product semantics, not just syntax. Examples include:
 - retry boundaries remain bounded;
 - request IDs propagate safely;
 - evidence payload size is bounded;
-- governed AI output cannot rely on unknown evidence references.
+- governed AI output cannot rely on unknown evidence references;
+- stale deployment aliases cannot silently strand the public web client on a dead API URL.
 
 ## Demo & explanation
 
@@ -374,12 +394,19 @@ problem → architecture → traceability → governed AI → Evidence Passport 
 
 The repository does **not** include AI-generated fake product screenshots as proof of functionality. The final GIF/video should be captured from the real deployed interface.
 
+<!--
+Publishing the real media requires only two changes after capture:
+1. add assets/demo.gif;
+2. replace REPLACE_WITH_FINAL_DEMO_VIDEO_URL and uncomment README_DEMO_MEDIA_START/END at the top.
+-->
+
 For an interview-oriented explanation of the project, including 30-second/2-minute pitches and likely technical questions, see [`docs/interview-guide.md`](docs/interview-guide.md).
 
 ## Repository map
 
 ```text
 ProjetoNu/
+├── AGENTS.md                       # evidence/governance invariants for coding agents
 ├── apps/web/                       # Next.js ATLAS SAC + ATLAS Micro UI
 ├── services/risk-engine/           # FastAPI rules + ML + AI + Micro readiness
 ├── supabase/migrations/            # versioned database/security migrations
@@ -400,7 +427,9 @@ ProjetoNu/
 │   ├── ml-baseline.md
 │   ├── production-readiness.md
 │   └── public-data.md
-└── .github/workflows/ci.yml
+└── .github/workflows/
+    ├── ci.yml
+    └── heartbeat.yml
 ```
 
 ## Run locally
@@ -432,7 +461,7 @@ http://localhost:3000        ATLAS SAC
 http://localhost:3000/micro  ATLAS Micro
 ```
 
-The web app defaults to `http://localhost:8000`. To point it elsewhere:
+The web app defaults to `http://localhost:8000` in development and uses the verified public risk-engine domain when built for production without a valid override. To point it elsewhere:
 
 ```bash
 NEXT_PUBLIC_RISK_API_URL=https://your-risk-engine.example
