@@ -1,0 +1,89 @@
+name: Capture real ATLAS demo (fixed)
+
+on:
+  push:
+    branches: [chore/real-demo-capture]
+    paths:
+      - scripts/capture-demo.mjs
+      - .github/workflows/capture-demo-fixed.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          ffmpeg -version | head -n 1
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Capture the real deployed product
+        env:
+          ATLAS_PRODUCT_URL: https://atlas-sac-ui.vercel.app
+        run: node scripts/capture-demo.mjs
+
+      - name: Encode portfolio media
+        run: |
+          mkdir -p assets
+          ffmpeg -y \
+            -i demo-artifacts/atlas-demo-long.webm \
+            -c:v libx264 -preset medium -crf 28 -pix_fmt yuv420p -movflags +faststart \
+            -an assets/demo.mp4
+
+          ffmpeg -y \
+            -i demo-artifacts/atlas-demo-gif.webm \
+            -vf "fps=6,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3" \
+            assets/demo.gif
+
+          ls -lh assets/demo.mp4 assets/demo.gif
+
+      - name: Enforce portfolio-friendly media size
+        shell: bash
+        run: |
+          set -euo pipefail
+          gif_bytes=$(stat -c%s assets/demo.gif)
+          mp4_bytes=$(stat -c%s assets/demo.mp4)
+          test "$gif_bytes" -lt 10485760
+          test "$mp4_bytes" -lt 52428800
+
+      - name: Upload capture artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-real-demo
+          path: |
+            assets/demo.mp4
+            assets/demo.gif
+            demo-artifacts/atlas-demo-long.webm
+          retention-days: 14
+
+      - name: Commit real media to capture branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/demo.mp4 assets/demo.gif
+          if git diff --cached --quiet; then
+            echo "Media unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "Capture real ATLAS product demo"
+          git push
