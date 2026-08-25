@@ -6,14 +6,17 @@
 
 **Evidence-first risk intelligence with explicit uncertainty and human oversight.**
 
-<!-- README_DEMO_MEDIA_START
 <p align="center">
   <img src="assets/demo.gif" alt="ATLAS SAC and ATLAS Micro real product demo" width="100%" />
 </p>
 <p align="center">
-  <a href="REPLACE_WITH_FINAL_DEMO_VIDEO_URL"><strong>Watch the 60–90 second product demo</strong></a>
+  <a href="assets/demo.mp4"><strong>Watch the full real product demo</strong></a>
+  ·
+  <a href="https://atlas-sac-ui.vercel.app"><strong>Open ATLAS SAC</strong></a>
+  ·
+  <a href="https://atlas-sac-ui.vercel.app/micro"><strong>Open ATLAS Micro</strong></a>
 </p>
-README_DEMO_MEDIA_END -->
+<p align="center"><sub>Real deployed-product capture. No AI-generated product screenshots.</sub></p>
 
 **Live ATLAS SAC:** https://atlas-sac-ui.vercel.app  
 **Live ATLAS Micro:** https://atlas-sac-ui.vercel.app/micro  
@@ -392,13 +395,8 @@ SAC → Evidence Trace → AI/human boundary → Micro → missing evidence → 
 problem → architecture → traceability → governed AI → Evidence Passport → limitations
 ```
 
-The repository does **not** include AI-generated fake product screenshots as proof of functionality. The final GIF/video should be captured from the real deployed interface.
+The repository uses **real captured product media recorded from the deployed interface**. No AI-generated fake product screenshots are used as proof of functionality.
 
-<!--
-Publishing the real media requires only two changes after capture:
-1. add assets/demo.gif;
-2. replace REPLACE_WITH_FINAL_DEMO_VIDEO_URL and uncomment README_DEMO_MEDIA_START/END at the top.
--->
 
 For an interview-oriented explanation of the project, including 30-second/2-minute pitches and likely technical questions, see [`docs/interview-guide.md`](docs/interview-guide.md).
 
@@ -413,7 +411,9 @@ ProjetoNu/
 ├── assets/
 │   ├── atlas-hero.svg
 │   ├── architecture.svg
-│   └── evidence-flow.svg
+│   ├── evidence-flow.svg
+│   ├── demo.gif                      # real deployed-product loop
+│   └── demo.mp4                      # full real product demo
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── ai-review.md
